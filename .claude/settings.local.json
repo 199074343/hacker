@@ -12,7 +12,10 @@
       "Bash(./check-feishu-schema.sh:*)",
       "Read(//Users/jiangmengchen/gaodun/code/**)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(git config:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

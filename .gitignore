@@ -1,0 +1,57 @@
+# ===== 敏感信息 =====
+# 注意：飞书凭证已在代码中，建议生产环境使用环境变量
+*.env
+*.secret
+credentials.json
+
+# ===== Backend (Java/Maven) =====
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+backend/*.iml
+backend/.idea/
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/bin/
+backend/build/
+backend/out/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===== Claude Code =====
+.claude/settings.local.json
+
+# ===== 日志文件 =====
+*.log
+logs/
+
+# ===== 临时文件 =====
+*.tmp
+*.temp
+.cache/
