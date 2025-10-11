@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>骇客大赛 - 数据管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+        }
+        .card {
+            margin-bottom: 20px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .btn-refresh {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow: auto;
+        }
+        .timestamp {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-white text-center mb-4">
+            <i class="fas fa-database me-2"></i>骇客大赛数据管理后台
+        </h1>
+
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>说明：</strong>此页面实时从飞书多维表格读取数据。如果数据没有更新，请检查：
+            <ul class="mb-0 mt-2">
+                <li>后端服务是否正常运行</li>
+                <li>缓存是否已过期（缓存时间：5分钟）</li>
+                <li>飞书表格中的数据是否真的改变了</li>
+            </ul>
+            <button class="btn btn-warning btn-sm mt-2" onclick="clearCache()">
+                <i class="fas fa-trash-alt me-1"></i>清除所有缓存并刷新
+            </button>
+        </div>
+
+        <!-- 系统配置表 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-cog me-2"></i>系统配置表 (Config)
+                <span class="timestamp float-end" id="config-timestamp"></span>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm mb-2" onclick="loadConfig()">
+                    <i class="fas fa-sync me-1"></i>刷新
+                </button>
+                <div class="table-container">
+                    <pre id="config-data">加载中...</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 项目表 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-folder me-2"></i>参赛项目表 (Projects)
+                <span class="timestamp float-end" id="projects-timestamp"></span>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm mb-2" onclick="loadProjects()">
+                    <i class="fas fa-sync me-1"></i>刷新
+                </button>
+                <div class="table-container">
+                    <table class="table table-striped table-hover" id="projects-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>排名</th>
+                                <th>项目名称</th>
+                                <th>团队</th>
+                                <th>UV</th>
+                                <th>投资额</th>
+                                <th>是否晋级</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" class="text-center">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 投资人表 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-users me-2"></i>投资人表 (Investors)
+                <span class="timestamp float-end" id="investors-timestamp"></span>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm mb-2" onclick="loadInvestors()">
+                    <i class="fas fa-sync me-1"></i>刷新
+                </button>
+                <div class="table-container">
+                    <table class="table table-striped table-hover" id="investors-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>用户名</th>
+                                <th>姓名</th>
+                                <th>职位</th>
+                                <th>初始额度</th>
+                                <th>剩余额度</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 投资记录表 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-coins me-2"></i>投资记录表 (Investments)
+                <span class="timestamp float-end" id="investments-timestamp"></span>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm mb-2" onclick="loadInvestments()">
+                    <i class="fas fa-sync me-1"></i>刷新
+                </button>
+                <div class="table-container">
+                    <table class="table table-striped table-hover" id="investments-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>投资时间</th>
+                                <th>投资人</th>
+                                <th>项目</th>
+                                <th>金额(万元)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" class="text-center">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 刷新所有数据按钮 -->
+    <button class="btn btn-primary btn-refresh" onclick="loadAllData()" title="刷新所有数据">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+    <script>
+        const API_BASE = CONFIG.API_BASE_URL;
+
+        // 格式化时间戳
+        function formatTimestamp() {
+            return new Date().toLocaleString('zh-CN');
+        }
+
+        // 清除缓存
+        async function clearCache() {
+            if (!confirm('确定要清除所有缓存吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/cache/clear`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    alert('缓存已清除！');
+                    loadAllData();
+                } else {
+                    alert('清除缓存失败: ' + result.message);
+                }
+            } catch (error) {
+                alert('清除缓存失败: ' + error.message);
+            }
+        }
+
+        // 加载系统配置
+        async function loadConfig() {
+            try {
+                document.getElementById('config-data').textContent = '加载中...';
+                const response = await fetch(`${API_BASE}/stage`);
+                const result = await response.json();
+
+                document.getElementById('config-data').textContent = JSON.stringify(result, null, 2);
+                document.getElementById('config-timestamp').textContent = '更新时间: ' + formatTimestamp();
+            } catch (error) {
+                document.getElementById('config-data').textContent = '加载失败: ' + error.message;
+            }
+        }
+
+        // 加载项目列表
+        async function loadProjects() {
+            try {
+                const tbody = document.querySelector('#projects-table tbody');
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">加载中...</td></tr>';
+
+                const response = await fetch(`${API_BASE}/projects`);
+                const result = await response.json();
+
+                if (result.code === 200 && result.data.length > 0) {
+                    tbody.innerHTML = result.data.map(p => `
+                        <tr>
+                            <td>${p.rank}</td>
+                            <td>${p.name}</td>
+                            <td>${p.teamName} #${p.teamNumber}</td>
+                            <td>${p.uv.toLocaleString()}</td>
+                            <td>${p.investment}万元</td>
+                            <td>${p.qualified ? '<span class="badge bg-success">是</span>' : '<span class="badge bg-secondary">否</span>'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">加载失败或无数据</td></tr>';
+                }
+
+                document.getElementById('projects-timestamp').textContent = '更新时间: ' + formatTimestamp();
+            } catch (error) {
+                document.querySelector('#projects-table tbody').innerHTML =
+                    `<tr><td colspan="6" class="text-center text-danger">加载失败: ${error.message}</td></tr>`;
+            }
+        }
+
+        // 加载投资人列表
+        async function loadInvestors() {
+            try {
+                const tbody = document.querySelector('#investors-table tbody');
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">加载中...</td></tr>';
+
+                // 注意：需要后端提供获取所有投资人的接口，这里先用示例
+                const response = await fetch(`${API_BASE}/projects`);
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    // 从项目的投资记录中提取投资人信息
+                    const investors = new Map();
+                    result.data.forEach(project => {
+                        if (project.investmentRecords) {
+                            project.investmentRecords.forEach(record => {
+                                if (!investors.has(record.username)) {
+                                    investors.set(record.username, record);
+                                }
+                            });
+                        }
+                    });
+
+                    if (investors.size > 0) {
+                        tbody.innerHTML = Array.from(investors.values()).map(inv => `
+                            <tr>
+                                <td>${inv.username}</td>
+                                <td>${inv.name}</td>
+                                <td>${inv.title || '-'}</td>
+                                <td>${inv.initialAmount || '-'}万元</td>
+                                <td>${inv.remainingAmount || '-'}万元</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无投资人数据</td></tr>';
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>';
+                }
+
+                document.getElementById('investors-timestamp').textContent = '更新时间: ' + formatTimestamp();
+            } catch (error) {
+                document.querySelector('#investors-table tbody').innerHTML =
+                    `<tr><td colspan="5" class="text-center text-danger">加载失败: ${error.message}</td></tr>`;
+            }
+        }
+
+        // 加载投资记录
+        async function loadInvestments() {
+            try {
+                const tbody = document.querySelector('#investments-table tbody');
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">加载中...</td></tr>';
+
+                const response = await fetch(`${API_BASE}/projects`);
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    const investments = [];
+                    result.data.forEach(project => {
+                        if (project.investmentRecords) {
+                            project.investmentRecords.forEach(record => {
+                                investments.push({
+                                    ...record,
+                                    projectName: project.name
+                                });
+                            });
+                        }
+                    });
+
+                    if (investments.length > 0) {
+                        // 按时间倒序排序
+                        investments.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+                        tbody.innerHTML = investments.map(inv => `
+                            <tr>
+                                <td>${inv.timestamp ? new Date(inv.timestamp).toLocaleString('zh-CN') : '-'}</td>
+                                <td>${inv.name}</td>
+                                <td>${inv.projectName}</td>
+                                <td>${inv.amount}万元</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">暂无投资记录</td></tr>';
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">加载失败</td></tr>';
+                }
+
+                document.getElementById('investments-timestamp').textContent = '更新时间: ' + formatTimestamp();
+            } catch (error) {
+                document.querySelector('#investments-table tbody').innerHTML =
+                    `<tr><td colspan="4" class="text-center text-danger">加载失败: ${error.message}</td></tr>`;
+            }
+        }
+
+        // 加载所有数据
+        function loadAllData() {
+            loadConfig();
+            loadProjects();
+            loadInvestors();
+            loadInvestments();
+        }
+
+        // 页面加载时自动加载所有数据
+        document.addEventListener('DOMContentLoaded', loadAllData);
+
+        // 每30秒自动刷新一次
+        setInterval(loadAllData, 30000);
+    </script>
+</body>
+</html>
