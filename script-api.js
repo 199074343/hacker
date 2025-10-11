@@ -1,5 +1,7 @@
 // ===== API配置 =====
-const API_BASE_URL = 'http://localhost:8080/api/hackathon';
+// API base URL is loaded from config.js
+// API基础URL从config.js中加载
+const API_BASE_URL = CONFIG.API_BASE_URL;
 
 // 全局变量
 let currentUser = null;
