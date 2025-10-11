@@ -3,7 +3,6 @@ package com.gdtech.hackathon.service;
 import com.gdtech.hackathon.config.FeishuConfig;
 import com.gdtech.hackathon.model.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -33,7 +32,6 @@ public class HackathonService {
     /**
      * 获取当前比赛阶段
      */
-    @Cacheable(value = "currentStage", unless = "#result == null")
     public CompetitionStage getCurrentStage() {
         try {
             String tableId = feishuConfig.getConfigTableId();
@@ -56,7 +54,6 @@ public class HackathonService {
     /**
      * 获取所有项目列表（带排名）
      */
-    @Cacheable(value = "projects", unless = "#result == null || #result.isEmpty()")
     public List<Project> getAllProjects() {
         try {
             String tableId = feishuConfig.getProjectsTableId();

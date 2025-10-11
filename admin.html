@@ -60,15 +60,7 @@
 
         <div class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i>
-            <strong>说明：</strong>此页面实时从飞书多维表格读取数据。如果数据没有更新，请检查：
-            <ul class="mb-0 mt-2">
-                <li>后端服务是否正常运行</li>
-                <li>缓存是否已过期（缓存时间：5分钟）</li>
-                <li>飞书表格中的数据是否真的改变了</li>
-            </ul>
-            <button class="btn btn-warning btn-sm mt-2" onclick="clearCache()">
-                <i class="fas fa-trash-alt me-1"></i>清除所有缓存并刷新
-            </button>
+            <strong>说明：</strong>此页面实时从飞书多维表格读取数据，无缓存，每次刷新都会获取最新数据。
         </div>
 
         <!-- 系统配置表 -->
@@ -188,29 +180,6 @@
         // 格式化时间戳
         function formatTimestamp() {
             return new Date().toLocaleString('zh-CN');
-        }
-
-        // 清除缓存
-        async function clearCache() {
-            if (!confirm('确定要清除所有缓存吗？')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/cache/clear`, {
-                    method: 'POST'
-                });
-                const result = await response.json();
-
-                if (result.code === 200) {
-                    alert('缓存已清除！');
-                    loadAllData();
-                } else {
-                    alert('清除缓存失败: ' + result.message);
-                }
-            } catch (error) {
-                alert('清除缓存失败: ' + error.message);
-            }
         }
 
         // 加载系统配置

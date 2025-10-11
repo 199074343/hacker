@@ -9,7 +9,6 @@ import com.gdtech.hackathon.model.Project;
 import com.gdtech.hackathon.service.HackathonService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,11 +26,9 @@ import java.util.Map;
 public class HackathonController {
 
     private final HackathonService hackathonService;
-    private final CacheManager cacheManager;
 
-    public HackathonController(HackathonService hackathonService, CacheManager cacheManager) {
+    public HackathonController(HackathonService hackathonService) {
         this.hackathonService = hackathonService;
-        this.cacheManager = cacheManager;
     }
 
     /**
@@ -144,26 +141,6 @@ public class HackathonController {
         } catch (Exception e) {
             log.error("投资失败", e);
             return ApiResponse.error("投资失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 清除所有缓存
-     */
-    @PostMapping("/cache/clear")
-    public ApiResponse<String> clearCache() {
-        try {
-            cacheManager.getCacheNames().forEach(cacheName -> {
-                var cache = cacheManager.getCache(cacheName);
-                if (cache != null) {
-                    cache.clear();
-                    log.info("已清除缓存: {}", cacheName);
-                }
-            });
-            return ApiResponse.success("缓存已清除");
-        } catch (Exception e) {
-            log.error("清除缓存失败", e);
-            return ApiResponse.error("清除缓存失败");
         }
     }
 
