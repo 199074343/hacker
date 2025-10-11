@@ -1,0 +1,741 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* 背景图片覆盖层 */
+.background-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea;stop-opacity:0.8"/><stop offset="100%" style="stop-color:%23764ba2;stop-opacity:0.8"/></linearGradient></defs><rect width="1200" height="800" fill="url(%23bg)"/><text x="600" y="300" text-anchor="middle" fill="white" font-size="48" font-weight="bold">AI X Edu</text><text x="600" y="360" text-anchor="middle" fill="white" font-size="32">Ignite the Future of Education</text><text x="600" y="500" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="24">GDTech第八届骇客大赛</text></svg>') center/cover;
+    z-index: -1;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+}
+
+.background-overlay:hover {
+    opacity: 0.9;
+}
+
+/* 玻璃态效果基础样式 */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* 导航栏 */
+.glass-nav {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 玻璃态按钮 */
+.glass-btn {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 25px;
+    color: white;
+    padding: 8px 20px;
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.glass-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    color: white;
+}
+
+/* 主要内容区域 */
+.main-content {
+    padding-top: 100px;
+    padding-bottom: 50px;
+}
+
+/* 玻璃态卡片 */
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* 阶段信息 */
+.stage-info {
+    text-align: center;
+}
+
+.stage-details {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stage-current {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.stage-time {
+    color: #87ceeb;
+    font-size: 0.9rem;
+}
+
+.stage-rule {
+    color: #f0f8ff;
+    font-size: 0.95rem;
+    margin-top: 10px;
+}
+
+/* 晋级区样式 */
+.qualified-section {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.qualified-section h4 {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 项目卡片 */
+.project-card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    color: white;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.project-rank {
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.project-rank.top-3 {
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    color: #333;
+}
+
+.project-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 15px;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.project-image:hover {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.project-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.project-description {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.project-url {
+    color: #87ceeb;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.3s ease;
+}
+
+.project-url:hover {
+    color: #add8e6;
+    text-decoration: underline;
+}
+
+.team-info {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.team-info:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.team-number {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.team-name {
+    color: #fff;
+}
+
+/* 数据统计 */
+.stats-container {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 15px;
+    padding: 15px;
+    margin: 15px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-icon {
+    width: 20px;
+    margin-right: 8px;
+    color: #87ceeb;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.8);
+    margin-right: 10px;
+}
+
+.stat-value {
+    color: #fff;
+    font-weight: bold;
+}
+
+/* 投资记录 */
+.investment-records {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.investor-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.investor-avatar:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.investment-amount {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: #ff6b6b;
+    color: white;
+    font-size: 0.7rem;
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+/* 操作按钮 */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-visit {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-visit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+    color: white;
+}
+
+.btn-invest {
+    background: linear-gradient(135deg, #fa709a, #fee140);
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-invest:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(250, 112, 154, 0.4);
+    color: white;
+}
+
+.btn-invest:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 模态框 - 使用更强的选择器 */
+.modal.glass-modal .modal-dialog .modal-content {
+    background: rgba(30, 30, 50, 0.95) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5) !important;
+    color: white !important;
+}
+
+/* 覆盖Bootstrap默认的模态框背景 */
+#loginModal .modal-content,
+#investorModal .modal-content,
+#investModal .modal-content {
+    background: rgba(30, 30, 50, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5) !important;
+}
+
+.glass-modal .modal-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.glass-modal .modal-body {
+    background: transparent !important;
+}
+
+.glass-modal .form-label {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.glass-input {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 10px;
+    color: white !important;
+    padding: 10px 15px;
+}
+
+.glass-input:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+}
+
+.glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 修复Bootstrap默认样式覆盖 */
+.modal-content {
+    background-color: transparent !important;
+}
+
+.form-control {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.form-control:focus {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+}
+
+/* 强制所有模态框内的文本为白色 */
+#loginModal *,
+#investorModal *,
+#investModal * {
+    color: white !important;
+}
+
+#loginModal .modal-header,
+#investorModal .modal-header,
+#investModal .modal-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+#loginModal .modal-body,
+#investorModal .modal-body,
+#investModal .modal-body {
+    background: transparent !important;
+}
+
+#loginModal .form-label,
+#investorModal .form-label,
+#investModal .form-label,
+#loginModal .modal-title,
+#investorModal .modal-title,
+#investModal .modal-title {
+    color: white !important;
+}
+
+/* 确保按钮样式正确 */
+#loginModal .btn-close,
+#investorModal .btn-close,
+#investModal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+    opacity: 0.8;
+}
+
+#loginModal .btn-close:hover,
+#investorModal .btn-close:hover,
+#investModal .btn-close:hover {
+    opacity: 1;
+}
+
+/* 最强制的背景覆盖 */
+.modal-content {
+    background-color: rgba(30, 30, 50, 0.95) !important;
+    background-image: none !important;
+}
+
+/* 额外的模态框样式修复 */
+.glass-modal .modal-title {
+    color: white !important;
+}
+
+.glass-modal .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.glass-modal .text-white {
+    color: white !important;
+}
+
+.glass-modal .form-text {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* 投资人信息卡片 */
+.glass-modal .glass-card {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white !important;
+}
+
+.glass-modal .text-warning {
+    color: #ffd700 !important;
+}
+
+.glass-modal .text-info {
+    color: #87ceeb !important;
+}
+
+.glass-modal .text-light {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Toast */
+.glass-toast {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    color: white;
+}
+
+.glass-toast .toast-header {
+    background: transparent;
+    color: white;
+}
+
+/* 页脚 */
+.glass-footer {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 20px 0;
+    color: white;
+    text-align: center;
+}
+
+/* 投资人信息弹框 */
+.investor-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.investor-tooltip.show {
+    opacity: 1;
+}
+
+/* 加载动画 */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .main-content {
+        padding-top: 80px;
+    }
+    
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+    
+    .project-card {
+        padding: 15px;
+    }
+    
+    .project-image {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+    }
+    
+    .stats-container {
+        padding: 10px;
+    }
+    
+    .investment-records {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .glass-card {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .project-rank {
+        position: static;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+    
+    .qualified-section,
+    .non-qualified-section {
+        padding: 15px;
+    }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* 动画效果 */
+.fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-up {
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 最终的模态框样式修复 - 最高优先级 */
+.modal-dialog .modal-content {
+    background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(40, 40, 70, 0.95)) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5) !important;
+    color: white !important;
+}
+
+.modal-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+.modal-body {
+    background: transparent !important;
+    color: white !important;
+}
+
+.modal-title {
+    color: white !important;
+}
+
+.form-label {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.form-control {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+    border-radius: 10px !important;
+}
+
+.form-control:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+    opacity: 0.8 !important;
+}
+
+.btn-close:hover {
+    opacity: 1 !important;
+}

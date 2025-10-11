@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(mvn clean:*)",
+      "Bash(mvn spring-boot:run:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(chmod:*)",
+      "Bash(/Users/jiangmengchen/gaodun/code/hacker/backend/check-feishu-schema.sh:*)",
+      "Bash(xargs -I {} curl -s -X GET \"https://open.feishu.cn/open-apis/bitable/v1/apps/VZ77bJ9MvalDxqscf0Bcfh0Tnjp/tables/tblGAbkdJKqTOlEw/fields\" -H \"Authorization: Bearer {}\")",
+      "Bash(./check-feishu-schema.sh:*)",
+      "Read(//Users/jiangmengchen/gaodun/code/**)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

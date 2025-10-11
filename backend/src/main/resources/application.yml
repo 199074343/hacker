@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: gdtech-hackathon
+
+  # Jackson配置
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: non_null
+
+  # 缓存配置
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=300s
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# 飞书配置
+feishu:
+  app-id: ${FEISHU_APP_ID:your_app_id}
+  app-secret: ${FEISHU_APP_SECRET:your_app_secret}
+
+  # 多维表格配置
+  base:
+    app-token: ${FEISHU_BASE_APP_TOKEN:your_app_token}
+    tables:
+      projects: ${FEISHU_TABLE_PROJECTS:tblxxxxxx}
+      investors: ${FEISHU_TABLE_INVESTORS:tblxxxxxx}
+      investments: ${FEISHU_TABLE_INVESTMENTS:tblxxxxxx}
+      config: ${FEISHU_TABLE_CONFIG:tblxxxxxx}
+
+# 百度统计配置
+baidu:
+  tongji:
+    token: ${BAIDU_TONGJI_TOKEN:your_baidu_token}
+    # UV同步间隔（分钟）
+    sync-interval: 10
+
+# 业务配置
+hackathon:
+  # 晋级名额
+  qualified-count: 15
+
+  # 比赛阶段时间配置（用于自动切换阶段，如果不配置则从飞书表格读取）
+  stages:
+    selection:
+      start: 2024-10-24 24:00:00
+      end: 2024-11-07 12:00:00
+    lock:
+      start: 2024-11-07 12:00:00
+      end: 2024-11-14 00:00:00
+    investment:
+      start: 2024-11-14 00:00:00
+      end: 2024-11-14 18:00:00
+
+# 日志配置
+logging:
+  level:
+    com.gdtech.hackathon: DEBUG
+    com.larksuite.oapi: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

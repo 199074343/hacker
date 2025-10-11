@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="200" height="200" rx="20" fill="url(#bgGradient)"/>
+  
+  <!-- 玻璃态效果 -->
+  <rect width="200" height="200" rx="20" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+  
+  <!-- 代码图标 -->
+  <g transform="translate(100,100)" filter="url(#glow)">
+    <!-- 左括号 -->
+    <path d="M -40,-30 Q -50,-30 -50,-20 L -50,20 Q -50,30 -40,30" 
+          fill="none" stroke="url(#iconGradient)" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- 右括号 -->
+    <path d="M 40,-30 Q 50,-30 50,-20 L 50,20 Q 50,30 40,30" 
+          fill="none" stroke="url(#iconGradient)" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- 中间的斜杠 -->
+    <line x1="-15" y1="25" x2="15" y2="-25" 
+          stroke="url(#iconGradient)" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- AI芯片图标 -->
+    <rect x="-20" y="-15" width="40" height="30" rx="5" 
+          fill="rgba(255,255,255,0.2)" stroke="url(#iconGradient)" stroke-width="2"/>
+    
+    <!-- 芯片内部电路 -->
+    <g stroke="url(#iconGradient)" stroke-width="1.5" fill="none">
+      <line x1="-15" y1="-8" x2="15" y2="-8"/>
+      <line x1="-15" y1="0" x2="15" y2="0"/>
+      <line x1="-15" y1="8" x2="15" y2="8"/>
+      <circle cx="-8" cy="-8" r="2" fill="url(#iconGradient)"/>
+      <circle cx="8" cy="0" r="2" fill="url(#iconGradient)"/>
+      <circle cx="-8" cy="8" r="2" fill="url(#iconGradient)"/>
+    </g>
+  </g>
+  
+  <!-- 装饰性粒子 -->
+  <g opacity="0.6">
+    <circle cx="30" cy="40" r="2" fill="#4facfe"/>
+    <circle cx="170" cy="60" r="1.5" fill="#00f2fe"/>
+    <circle cx="40" cy="160" r="1" fill="#667eea"/>
+    <circle cx="160" cy="140" r="2.5" fill="#764ba2"/>
+    <circle cx="180" cy="30" r="1" fill="#4facfe"/>
+    <circle cx="20" cy="180" r="1.5" fill="#00f2fe"/>
+  </g>
+  
+  <!-- 底部文字 -->
+  <text x="100" y="180" text-anchor="middle" fill="rgba(255,255,255,0.8)" 
+        font-family="Arial, sans-serif" font-size="12" font-weight="bold">
+    HACKATHON
+  </text>
+</svg>
