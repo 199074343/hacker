@@ -21,17 +21,17 @@ server:
 
 # 飞书配置
 feishu:
-  app-id: ${FEISHU_APP_ID:your_app_id}
-  app-secret: ${FEISHU_APP_SECRET:your_app_secret}
+  app-id: ${FEISHU_APP_ID:cli_a862c494a9431013}
+  app-secret: ${FEISHU_APP_SECRET:tUw7iGj2MKCDVXyGsqJWdh7iLuhqhPc4}
 
   # 多维表格配置
   base:
-    app-token: ${FEISHU_BASE_APP_TOKEN:your_app_token}
+    app-token: ${FEISHU_BASE_APP_TOKEN:VZ77bJ9MvalDxqscf0Bcfh0Tnjp}
     tables:
-      projects: ${FEISHU_TABLE_PROJECTS:tblxxxxxx}
-      investors: ${FEISHU_TABLE_INVESTORS:tblxxxxxx}
-      investments: ${FEISHU_TABLE_INVESTMENTS:tblxxxxxx}
-      config: ${FEISHU_TABLE_CONFIG:tblxxxxxx}
+      projects: ${FEISHU_TABLE_PROJECTS:tblGAbkdJKqTOlEw}
+      investors: ${FEISHU_TABLE_INVESTORS:tblDp18p0G4xcADk}
+      investments: ${FEISHU_TABLE_INVESTMENTS:tblh9DMhfC4dQHMJ}
+      config: ${FEISHU_TABLE_CONFIG:tbl43OV7SBtzFzw1}
 
 # 百度统计配置
 baidu:
