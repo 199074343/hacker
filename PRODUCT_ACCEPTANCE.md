@@ -9,17 +9,21 @@
 
 ## 一、访问地址
 
-### 开发环境
+### 生产环境
+
+| 服务 | 地址 | 状态 |
+|------|------|------|
+| 前端网站 | https://hackathon-frontend.preview.huawei-zeabur.cn | 🟢 运行中 |
+| 后端API | https://hackathon-backend.preview.huawei-zeabur.cn/api | 🟢 运行中 |
+| API健康检查 | https://hackathon-backend.preview.huawei-zeabur.cn/api/hackathon/health | 🟢 正常 |
+
+### 开发环境（本地）
 
 | 服务 | 地址 | 状态 |
 |------|------|------|
 | 前端网站 | http://localhost:8000 | 🟢 运行中 |
 | 后端API | http://localhost:8080/api | 🟢 运行中 |
 | API健康检查 | http://localhost:8080/api/hackathon/health | 🟢 正常 |
-
-### 生产环境（待部署）
-- 前端：待配置域名
-- 后端：待配置域名
 
 ---
 
@@ -38,7 +42,7 @@
 | 1005 | mno345 | 陈静 | 架构师 | 80万元 |
 
 **登录步骤：**
-1. 访问前端网站 http://localhost:8000
+1. 访问前端网站 https://hackathon-frontend.preview.huawei-zeabur.cn
 2. 点击右上角"投资人登录"按钮
 3. 输入账号（4位数字）和密码（6位数字+小写字母）
 4. 登录成功后可进行投资操作
@@ -233,7 +237,8 @@
 ## 六、API接口文档
 
 ### 基础信息
-- **Base URL**：http://localhost:8080/api/hackathon
+- **Base URL（生产）**：https://hackathon-backend.preview.huawei-zeabur.cn/api/hackathon
+- **Base URL（本地）**：http://localhost:8080/api/hackathon
 - **Content-Type**：application/json
 - **字符编码**：UTF-8
 
@@ -367,7 +372,7 @@
 
 ### 场景1：游客浏览项目列表
 
-1. 访问 http://localhost:8000
+1. 访问 https://hackathon-frontend.preview.huawei-zeabur.cn
 2. 查看比赛阶段说明（应显示当前为"投资期"）
 3. 查看晋级区项目列表（前15名，金色背景）
 4. 查看非晋级区项目列表
