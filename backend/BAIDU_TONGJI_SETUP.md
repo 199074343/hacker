@@ -68,11 +68,7 @@ HackathonService (排名计算)
    - 创建API Key，获取：
      - `client_id`（API Key / AK）
      - `client_secret`（Secret Key / SK）
-
-5. **获取Access Token**
-   - 方法1：通过OAuth2.0授权流程获取
-   - 方法2：使用百度统计账号密码登录后，从开发者工具中提取
-   - 参考：https://tongji.baidu.com/api/manual/Chapter2/openapi.html
+   - ⚠️ **注意**：只需要获取 AK 和 SK，access_token 会自动生成
 
 ### 2. 配置后端
 
@@ -86,13 +82,9 @@ baidu:
       account1:
         client-id: your_api_key_1       # 必填：API Key (AK)
         client-secret: your_secret_key_1 # 必填：Secret Key (SK)
-        username: your_username_1        # 可选：用于OAuth授权
-        password: your_password_1        # 可选：用于OAuth授权
       account2:
         client-id: your_api_key_2
         client-secret: your_secret_key_2
-        username: your_username_2
-        password: your_password_2
 ```
 
 **环境变量方式**（推荐生产环境）：
@@ -101,14 +93,10 @@ baidu:
 # 账号1
 export BAIDU_ACCOUNT1_CLIENT_ID=your_api_key_1
 export BAIDU_ACCOUNT1_CLIENT_SECRET=your_secret_key_1
-export BAIDU_ACCOUNT1_USERNAME=your_username_1
-export BAIDU_ACCOUNT1_PASSWORD=your_password_1
 
 # 账号2
 export BAIDU_ACCOUNT2_CLIENT_ID=your_api_key_2
 export BAIDU_ACCOUNT2_CLIENT_SECRET=your_secret_key_2
-export BAIDU_ACCOUNT2_USERNAME=your_username_2
-export BAIDU_ACCOUNT2_PASSWORD=your_password_2
 ```
 
 **重要说明**：
