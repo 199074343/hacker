@@ -191,6 +191,7 @@ public class HackathonService {
         project.setTeamName((String) record.get("队伍名称"));
         project.setTeamNumber((String) record.get("队伍编号"));
         project.setTeamUrl((String) record.get("团队介绍页URL"));
+        project.setBaiduAccount((String) record.get("百度统计账号"));
         project.setBaiduSiteId((String) record.get("百度统计SiteID"));
         project.setUv(getLong(record, "累计UV"));
         project.setEnabled((Boolean) record.getOrDefault("是否启用", true));

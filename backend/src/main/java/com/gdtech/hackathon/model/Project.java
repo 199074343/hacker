@@ -53,6 +53,11 @@ public class Project {
     private String teamUrl;
 
     /**
+     * 百度统计账号标识（account1, account2 等）
+     */
+    private String baiduAccount;
+
+    /**
      * 百度统计 Site ID
      */
     private String baiduSiteId;

@@ -15,6 +15,7 @@ import java.util.Map;
 /**
  * UV数据同步定时任务
  * 定期从百度统计API获取UV数据并更新到飞书表格
+ * 支持多个百度统计账号
  */
 @Slf4j
 @Component
@@ -63,6 +64,7 @@ public class UVSyncScheduler {
                     String recordId = (String) record.get("record_id");
                     Long projectId = getLong(record, "项目ID");
                     String projectName = (String) record.get("项目名称");
+                    String baiduAccount = (String) record.get("百度统计账号");
                     String baiduSiteId = (String) record.get("百度统计SiteID");
                     Boolean enabled = (Boolean) record.getOrDefault("是否启用", true);
 
@@ -71,13 +73,25 @@ public class UVSyncScheduler {
                         continue;
                     }
 
+                    if (baiduAccount == null || baiduAccount.trim().isEmpty()) {
+                        log.debug("项目 {} 没有配置百度统计账号，跳过", projectName);
+                        continue;
+                    }
+
                     if (baiduSiteId == null || baiduSiteId.trim().isEmpty()) {
                         log.debug("项目 {} 没有配置百度统计SiteID，跳过", projectName);
                         continue;
                     }
 
+                    // 检查账号配置是否存在
+                    BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(baiduAccount);
+                    if (credentials == null) {
+                        log.warn("项目 {} 的百度统计账号 {} 未配置，跳过", projectName, baiduAccount);
+                        continue;
+                    }
+
                     // 获取累计UV（最近30天）
-                    Integer uv = baiduTongjiService.getCumulativeUV(baiduSiteId, 30);
+                    Integer uv = baiduTongjiService.getCumulativeUV(baiduAccount, baiduSiteId, 30);
 
                     if (uv != null) {
                         // 更新飞书表格中的UV值
@@ -86,10 +100,10 @@ public class UVSyncScheduler {
 
                         feishuService.updateRecord(tableId, recordId, fields);
 
-                        log.info("项目 {} (ID:{}) UV更新成功: {}", projectName, projectId, uv);
+                        log.info("项目 {} (ID:{}, 账号:{}) UV更新成功: {}", projectName, projectId, baiduAccount, uv);
                         successCount++;
                     } else {
-                        log.warn("项目 {} (ID:{}) 获取UV失败", projectName, projectId);
+                        log.warn("项目 {} (ID:{}, 账号:{}) 获取UV失败", projectName, projectId, baiduAccount);
                         failCount++;
                     }
 

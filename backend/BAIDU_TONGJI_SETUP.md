@@ -1,8 +1,13 @@
-# 百度统计集成指南
+# 百度统计集成指南（多账号版）
 
 ## 功能说明
 
 本项目集成了百度统计API，用于自动同步项目的UV（独立访客）数据。系统会定期从百度统计API获取各项目的UV数据，并更新到飞书多维表格中，用于项目排名计算。
+
+**⚠️ 重要：支持多个百度统计账号**
+- 单个百度统计账号最多支持60个站点
+- 本系统支持配置多个百度统计账号（account1, account2, ...）
+- 每个项目可以指定使用哪个账号进行统计
 
 ## 核心功能
 
@@ -71,26 +76,44 @@ HackathonService (排名计算)
 
 ### 2. 配置后端
 
-编辑 `backend/src/main/resources/application-dev.yml`（或生产环境配置）：
+编辑 `backend/src/main/resources/application.yml`：
 
 ```yaml
 baidu:
   tongji:
-    client-id: your_api_key_here              # 百度API Key (AK)
-    client-secret: your_secret_key_here        # 百度Secret Key (SK)
-    access-token: your_access_token_here       # Access Token
-    refresh-token: your_refresh_token_here     # Refresh Token（用于自动刷新）
-    sync-interval: 10                          # UV同步间隔（分钟）
+    sync-interval: 10  # UV同步间隔（分钟）
+    accounts:
+      account1:
+        client-id: your_api_key_1
+        client-secret: your_secret_key_1
+        access-token: your_access_token_1
+        refresh-token: your_refresh_token_1
+      account2:
+        client-id: your_api_key_2
+        client-secret: your_secret_key_2
+        access-token: your_access_token_2
+        refresh-token: your_refresh_token_2
 ```
 
 **环境变量方式**（推荐生产环境）：
 
 ```bash
-export BAIDU_CLIENT_ID=your_api_key
-export BAIDU_CLIENT_SECRET=your_secret_key
-export BAIDU_ACCESS_TOKEN=your_access_token
-export BAIDU_REFRESH_TOKEN=your_refresh_token
+# 账号1
+export BAIDU_ACCOUNT1_CLIENT_ID=your_api_key_1
+export BAIDU_ACCOUNT1_CLIENT_SECRET=your_secret_key_1
+export BAIDU_ACCOUNT1_ACCESS_TOKEN=your_access_token_1
+export BAIDU_ACCOUNT1_REFRESH_TOKEN=your_refresh_token_1
+
+# 账号2
+export BAIDU_ACCOUNT2_CLIENT_ID=your_api_key_2
+export BAIDU_ACCOUNT2_CLIENT_SECRET=your_secret_key_2
+export BAIDU_ACCOUNT2_ACCESS_TOKEN=your_access_token_2
+export BAIDU_ACCOUNT2_REFRESH_TOKEN=your_refresh_token_2
 ```
+
+**注意事项**：
+- 账号标识（account1, account2）可以自定义，但需要与飞书表格中的"百度统计账号"字段值一致
+- 如果有更多账号，继续添加 account3, account4...
 
 ### 3. 配置飞书表格
 
@@ -100,9 +123,15 @@ export BAIDU_REFRESH_TOKEN=your_refresh_token
 |--------|------|------|
 | 项目ID | 数字 | 项目唯一标识 |
 | 项目名称 | 文本 | 项目名称 |
+| **百度统计账号** | **文本** | **使用的百度统计账号标识（account1/account2）** |
 | 百度统计SiteID | 文本 | 百度统计的站点ID |
 | 累计UV | 数字 | UV数据（由系统自动更新） |
 | 是否启用 | 复选框 | 是否参与UV同步 |
+
+**重要**：
+- "百度统计账号"字段的值必须与 application.yml 中配置的账号标识一致
+- 例如：填写 `account1` 表示使用第一个百度统计账号
+- 建议分配策略：前50个项目用 account1，后50个项目用 account2
 
 ### 4. 配置前端
 
@@ -135,8 +164,8 @@ UV同步任务会输出以下日志：
 
 ```
 2025-10-13 17:00:00 - 开始同步项目UV数据...
-2025-10-13 17:00:05 - 项目 AI学习助手 (ID:1) UV更新成功: 1523
-2025-10-13 17:00:08 - 项目 智能题库 (ID:2) UV更新成功: 2341
+2025-10-13 17:00:05 - 项目 AI学习助手 (ID:1, 账号:account1) UV更新成功: 1523
+2025-10-13 17:00:08 - 项目 智能题库 (ID:2, 账号:account2) UV更新成功: 2341
 2025-10-13 17:00:10 - UV数据同步完成: 成功 15, 失败 0
 ```
 
@@ -153,17 +182,22 @@ UV同步任务会在以下时机执行：
 
 ```java
 // 获取站点今日UV
-Integer getTodayUV(String siteId)
+Integer getTodayUV(String accountName, String siteId)
 
 // 获取站点累计UV（最近N天）
-Integer getCumulativeUV(String siteId, int days)
+Integer getCumulativeUV(String accountName, String siteId, int days)
 
 // 批量获取所有项目UV
-Map<Long, Integer> batchGetUV(Map<Long, String> siteIds)
+Map<Long, Integer> batchGetUV(Map<Long, ProjectSiteInfo> projectSites)
 
-// 手动刷新Token
-void refreshAccessToken()
+// 手动刷新指定账号的Token
+void refreshAccessToken(String accountName)
 ```
+
+**多账号支持**：
+- 所有方法都需要指定 `accountName` 参数
+- 系统会自动使用对应账号的凭证进行API调用
+- Token刷新是账号隔离的，互不影响
 
 ## 故障排查
 
@@ -195,9 +229,24 @@ void refreshAccessToken()
 
 **检查清单**：
 1. 项目的"是否启用"字段是否勾选
-2. "百度统计SiteID"字段是否填写
-3. 后端服务是否正常运行
-4. 查看日志中是否有错误信息
+2. "百度统计账号"字段是否填写（必须是 account1、account2 等）
+3. "百度统计SiteID"字段是否填写
+4. 后端配置中是否有对应账号的凭证
+5. 后端服务是否正常运行
+6. 查看日志中是否有错误信息
+
+### 账号配置错误
+
+**现象**：日志显示"项目 XXX 的百度统计账号 YYY 未配置，跳过"
+
+**原因**：
+- 飞书表格中填写的账号标识在 application.yml 中没有对应配置
+- 例如：表格中填写了 `account3`，但配置文件只有 account1 和 account2
+
+**解决方案**：
+1. 检查飞书表格中的"百度统计账号"字段值
+2. 确保 application.yml 中有对应的账号配置
+3. 账号标识必须完全一致（区分大小写）
 
 ## 数据同步策略
 
@@ -240,13 +289,21 @@ void refreshAccessToken()
 - 不要将 `access-token` 和 `refresh-token` 提交到Git仓库
 - 生产环境建议使用环境变量配置
 - 定期更换API密钥
+- 每个账号的凭证独立管理
 
 ⚠️ **API限制**：
 - 百度统计API有调用频率限制
 - 建议同步间隔不低于5分钟
 - 超出限制会返回错误码，系统会自动跳过
+- 多个账号的API调用是串行的，不会并发请求
 
 ⚠️ **数据准确性**：
 - 百度统计数据通常有1-2小时延迟
 - UV数据可能与实时访问有差异
 - 建议在比赛结束后进行最终排名计算
+
+⚠️ **多账号管理**：
+- 单个百度统计账号最多60个站点
+- 合理分配项目到不同账号（建议每个账号不超过50个）
+- 账号标识必须在飞书表格和配置文件中保持一致
+- 建议命名：account1, account2, account3...

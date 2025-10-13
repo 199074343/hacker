@@ -27,15 +27,23 @@ feishu:
       investments: ${FEISHU_TABLE_INVESTMENTS:tblh9DMhfC4dQHMJ}
       config: ${FEISHU_TABLE_CONFIG:tbl43OV7SBtzFzw1}
 
-# 百度统计配置
+# 百度统计配置（支持多账号）
 baidu:
   tongji:
-    client-id: ${BAIDU_CLIENT_ID:your_api_key}
-    client-secret: ${BAIDU_CLIENT_SECRET:your_secret_key}
-    access-token: ${BAIDU_ACCESS_TOKEN:your_access_token}
-    refresh-token: ${BAIDU_REFRESH_TOKEN:your_refresh_token}
     # UV同步间隔（分钟）
     sync-interval: 10
+    # 多个百度统计账号配置
+    accounts:
+      account1:
+        client-id: ${BAIDU_ACCOUNT1_CLIENT_ID:your_api_key_1}
+        client-secret: ${BAIDU_ACCOUNT1_CLIENT_SECRET:your_secret_key_1}
+        access-token: ${BAIDU_ACCOUNT1_ACCESS_TOKEN:your_access_token_1}
+        refresh-token: ${BAIDU_ACCOUNT1_REFRESH_TOKEN:your_refresh_token_1}
+      account2:
+        client-id: ${BAIDU_ACCOUNT2_CLIENT_ID:your_api_key_2}
+        client-secret: ${BAIDU_ACCOUNT2_CLIENT_SECRET:your_secret_key_2}
+        access-token: ${BAIDU_ACCOUNT2_ACCESS_TOKEN:your_access_token_2}
+        refresh-token: ${BAIDU_ACCOUNT2_REFRESH_TOKEN:your_refresh_token_2}
 
 # 业务配置
 hackathon:
