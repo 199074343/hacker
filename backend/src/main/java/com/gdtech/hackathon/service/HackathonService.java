@@ -1,12 +1,16 @@
 package com.gdtech.hackathon.service;
 
 import com.gdtech.hackathon.config.FeishuConfig;
+import com.gdtech.hackathon.config.HackathonProperties;
 import com.gdtech.hackathon.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -20,13 +24,17 @@ public class HackathonService {
 
     private final FeishuService feishuService;
     private final FeishuConfig feishuConfig;
+    private final HackathonProperties hackathonProperties;
 
     // 内存缓存投资记录，避免并发问题（生产环境应使用Redis）
     private final Map<String, Integer> investorRemainingAmount = new ConcurrentHashMap<>();
 
-    public HackathonService(FeishuService feishuService, FeishuConfig feishuConfig) {
+    public HackathonService(FeishuService feishuService,
+                            FeishuConfig feishuConfig,
+                            HackathonProperties hackathonProperties) {
         this.feishuService = feishuService;
         this.feishuConfig = feishuConfig;
+        this.hackathonProperties = hackathonProperties;
     }
 
     /**
@@ -67,50 +75,105 @@ public class HackathonService {
 
     /**
      * 根据当前时间判断比赛阶段
+     * 注意：时间早于海选期或晚于结束期，都视为海选期（活动未开始或已过期）
      */
     private CompetitionStage determineStageByTime() {
         LocalDateTime now = LocalDateTime.now();
+
+        StageWindow selectionWindow = buildStageWindow(CompetitionStage.SELECTION);
+        StageWindow lockWindow = buildStageWindow(CompetitionStage.LOCK);
+        StageWindow investmentWindow = buildStageWindow(CompetitionStage.INVESTMENT);
+
+        // 时间早于海选期开始
+        if (selectionWindow != null && selectionWindow.getStart() != null
+                && now.isBefore(selectionWindow.getStart())) {
+            log.info("当前时间早于海选期开始时间，视为海选期（活动未开始）");
+            return CompetitionStage.SELECTION;
+        }
+
+        if (selectionWindow != null && selectionWindow.contains(now)) {
+            log.info("当前时间处于海选期");
+            return CompetitionStage.SELECTION;
+        }
+
+        if (lockWindow != null && lockWindow.contains(now)) {
+            log.info("当前时间处于锁定期");
+            return CompetitionStage.LOCK;
+        }
+
+        if (investmentWindow != null && investmentWindow.contains(now)) {
+            log.info("当前时间处于投资期");
+            return CompetitionStage.INVESTMENT;
+        }
+
+        if (investmentWindow != null && investmentWindow.getEnd() != null
+                && now.isAfter(investmentWindow.getEnd())) {
+            log.info("当前时间晚于结束期，视为海选期（活动已过期）");
+            return CompetitionStage.SELECTION;
+        }
+
+        log.warn("未能从配置中解析到完整的阶段时间，默认返回海选期");
+        return CompetitionStage.SELECTION;
+    }
+
+    private StageWindow buildStageWindow(CompetitionStage stage) {
+        HackathonProperties.StageTimeline timeline = hackathonProperties.getStageTimeline(stage.getCode());
+        if (timeline == null) {
+            return null;
+        }
+
+        LocalDateTime start = parseStageDateTime(timeline.getStart());
+        LocalDateTime end = parseStageDateTime(timeline.getEnd());
+        if (start == null || end == null) {
+            return null;
+        }
+        return new StageWindow(start, end);
+    }
+
+    private LocalDateTime parseStageDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        String trimmed = value.trim();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         try {
-            // 解析各阶段时间（从application.yml配置）
-            LocalDateTime selectionStart = LocalDateTime.parse("2024-10-24 24:00:00", formatter);
-            LocalDateTime selectionEnd = LocalDateTime.parse("2024-11-07 12:00:00", formatter);
-            LocalDateTime lockEnd = LocalDateTime.parse("2024-11-14 00:00:00", formatter);
-            LocalDateTime investmentEnd = LocalDateTime.parse("2024-11-14 18:00:00", formatter);
-
-            // 时间早于海选期，视为海选期
-            if (now.isBefore(selectionStart)) {
-                log.info("当前时间早于海选期，视为海选期");
-                return CompetitionStage.SELECTION;
+            return LocalDateTime.parse(trimmed, formatter);
+        } catch (DateTimeParseException ex) {
+            LocalDateTime adjusted = tryParseWithMidnightOverflow(trimmed);
+            if (adjusted != null) {
+                return adjusted;
             }
-
-            // 海选期：10/24 24:00 - 11/7 12:00
-            if (now.isBefore(selectionEnd)) {
-                log.info("当前时间处于海选期");
-                return CompetitionStage.SELECTION;
-            }
-
-            // 锁定期：11/7 12:00 - 11/14 0:00
-            if (now.isBefore(lockEnd)) {
-                log.info("当前时间处于锁定期");
-                return CompetitionStage.LOCK;
-            }
-
-            // 投资期：11/14 0:00 - 18:00
-            if (now.isBefore(investmentEnd)) {
-                log.info("当前时间处于投资期");
-                return CompetitionStage.INVESTMENT;
-            }
-
-            // 结束期：11/14 18:00之后
-            log.info("当前时间处于结束期");
-            return CompetitionStage.ENDED;
-
-        } catch (Exception e) {
-            log.error("解析时间配置失败，默认返回海选期", e);
-            return CompetitionStage.SELECTION;
+            log.warn("无法解析阶段时间值: {}", trimmed, ex);
+            return null;
         }
+    }
+
+    private LocalDateTime tryParseWithMidnightOverflow(String value) {
+        String[] parts = value.split(" ");
+        if (parts.length != 2) {
+            return null;
+        }
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        try {
+            LocalDate date = LocalDate.parse(parts[0], dateFormatter);
+            String[] timeParts = parts[1].split(":");
+            if (timeParts.length != 3) {
+                return null;
+            }
+            int hour = Integer.parseInt(timeParts[0]);
+            int minute = Integer.parseInt(timeParts[1]);
+            int second = Integer.parseInt(timeParts[2]);
+
+            if (hour == 24 && minute == 0 && second == 0) {
+                return date.plusDays(1).atTime(LocalTime.MIDNIGHT);
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+        return null;
     }
 
     /**
@@ -440,9 +503,36 @@ public class HackathonService {
         }
 
         // 设置排名和晋级状态
+        int qualifiedCount = hackathonProperties.getQualifiedCount();
         for (int i = 0; i < projects.size(); i++) {
             projects.get(i).setRank(i + 1);
-            projects.get(i).setQualified(i < 15);
+            projects.get(i).setQualified(i < qualifiedCount);
+        }
+    }
+
+    private static class StageWindow {
+        private final LocalDateTime start;
+        private final LocalDateTime end;
+
+        StageWindow(LocalDateTime start, LocalDateTime end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        LocalDateTime getStart() {
+            return start;
+        }
+
+        LocalDateTime getEnd() {
+            return end;
+        }
+
+        boolean contains(LocalDateTime target) {
+            if (start == null || end == null || target == null) {
+                return false;
+            }
+            return (target.isAfter(start) || target.isEqual(start))
+                    && (target.isBefore(end) || target.isEqual(end));
         }
     }
 
