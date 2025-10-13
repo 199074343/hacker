@@ -17,7 +17,11 @@
       "Bash(git remote add:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 添加Spring Boot后端和CORS跨域配置\n\n- 完成Spring Boot 3.2后端架构搭建\n- 集成飞书多维表格作为数据源\n- 实现完整的CRUD操作和投资逻辑\n- 添加CORS配置支持前后端分离\n- 更新前端使用script-api.js连接后端\n- 添加.gitignore排除构建文件和敏感信息\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(backend/test-feishu-token.sh)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
