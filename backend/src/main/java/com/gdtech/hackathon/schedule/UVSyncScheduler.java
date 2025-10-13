@@ -1,0 +1,117 @@
+package com.gdtech.hackathon.schedule;
+
+import com.gdtech.hackathon.config.BaiduConfig;
+import com.gdtech.hackathon.config.FeishuConfig;
+import com.gdtech.hackathon.service.BaiduTongjiService;
+import com.gdtech.hackathon.service.FeishuService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * UV数据同步定时任务
+ * 定期从百度统计API获取UV数据并更新到飞书表格
+ */
+@Slf4j
+@Component
+public class UVSyncScheduler {
+
+    private final BaiduTongjiService baiduTongjiService;
+    private final FeishuService feishuService;
+    private final FeishuConfig feishuConfig;
+    private final BaiduConfig baiduConfig;
+
+    public UVSyncScheduler(
+            BaiduTongjiService baiduTongjiService,
+            FeishuService feishuService,
+            FeishuConfig feishuConfig,
+            BaiduConfig baiduConfig
+    ) {
+        this.baiduTongjiService = baiduTongjiService;
+        this.feishuService = feishuService;
+        this.feishuConfig = feishuConfig;
+        this.baiduConfig = baiduConfig;
+    }
+
+    /**
+     * 同步所有项目的UV数据
+     * 根据配置的同步间隔定期执行（默认10分钟）
+     */
+    @Scheduled(fixedDelayString = "${baidu.tongji.sync-interval:10}000", initialDelay = 60000)
+    public void syncAllProjectUV() {
+        try {
+            log.info("开始同步项目UV数据...");
+
+            // 获取所有项目
+            String tableId = feishuConfig.getProjectsTableId();
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+
+            if (records.isEmpty()) {
+                log.info("没有需要同步的项目");
+                return;
+            }
+
+            int successCount = 0;
+            int failCount = 0;
+
+            for (Map<String, Object> record : records) {
+                try {
+                    String recordId = (String) record.get("record_id");
+                    Long projectId = getLong(record, "项目ID");
+                    String projectName = (String) record.get("项目名称");
+                    String baiduSiteId = (String) record.get("百度统计SiteID");
+                    Boolean enabled = (Boolean) record.getOrDefault("是否启用", true);
+
+                    if (!enabled) {
+                        log.debug("项目 {} 已禁用，跳过", projectName);
+                        continue;
+                    }
+
+                    if (baiduSiteId == null || baiduSiteId.trim().isEmpty()) {
+                        log.debug("项目 {} 没有配置百度统计SiteID，跳过", projectName);
+                        continue;
+                    }
+
+                    // 获取累计UV（最近30天）
+                    Integer uv = baiduTongjiService.getCumulativeUV(baiduSiteId, 30);
+
+                    if (uv != null) {
+                        // 更新飞书表格中的UV值
+                        Map<String, Object> fields = new HashMap<>();
+                        fields.put("累计UV", uv.longValue());
+
+                        feishuService.updateRecord(tableId, recordId, fields);
+
+                        log.info("项目 {} (ID:{}) UV更新成功: {}", projectName, projectId, uv);
+                        successCount++;
+                    } else {
+                        log.warn("项目 {} (ID:{}) 获取UV失败", projectName, projectId);
+                        failCount++;
+                    }
+
+                } catch (Exception e) {
+                    log.error("同步项目UV失败", e);
+                    failCount++;
+                }
+            }
+
+            log.info("UV数据同步完成: 成功 {}, 失败 {}", successCount, failCount);
+
+        } catch (Exception e) {
+            log.error("UV同步任务异常", e);
+        }
+    }
+
+    private Long getLong(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) return 0L;
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(value.toString());
+    }
+}

@@ -30,7 +30,10 @@ feishu:
 # 百度统计配置
 baidu:
   tongji:
-    token: ${BAIDU_TONGJI_TOKEN:your_baidu_token}
+    client-id: ${BAIDU_CLIENT_ID:your_api_key}
+    client-secret: ${BAIDU_CLIENT_SECRET:your_secret_key}
+    access-token: ${BAIDU_ACCESS_TOKEN:your_access_token}
+    refresh-token: ${BAIDU_REFRESH_TOKEN:your_refresh_token}
     # UV同步间隔（分钟）
     sync-interval: 10
 

@@ -27,8 +27,12 @@ This project now consists of **two parts**:
 Frontend (Browser)
     ↓ HTTP/REST API
 Backend (Spring Boot :8080)
-    ↓ HTTP API
+    ↓ HTTP API (Data Storage)
 Feishu Bitable (飞书多维表格)
+
+Backend (定时任务)
+    ↓ HTTP API (UV Data)
+Baidu Tongji (百度统计)
 ```
 
 ## Development Commands
