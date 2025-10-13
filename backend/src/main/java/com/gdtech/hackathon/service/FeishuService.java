@@ -190,6 +190,42 @@ public class FeishuService {
     }
 
     /**
+     * 更新多维表格记录
+     *
+     * @param tableId  表ID
+     * @param recordId 记录ID
+     * @param fields   字段数据
+     */
+    public void updateRecord(String tableId, String recordId, Map<String, Object> fields) {
+        try {
+            String token = getTenantAccessToken();
+            String appToken = feishuConfig.getBase().getAppToken();
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("fields", fields);
+
+            String response = webClient.put()
+                    .uri(String.format("/bitable/v1/apps/%s/tables/%s/records/%s", appToken, tableId, recordId))
+                    .header("Authorization", "Bearer " + token)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode jsonNode = objectMapper.readTree(response);
+            if (jsonNode.get("code").asInt() == 0) {
+                log.debug("更新飞书表格记录成功: {}", recordId);
+            } else {
+                log.error("更新飞书表格记录失败: {}", response);
+                throw new RuntimeException("更新飞书表格记录失败: " + jsonNode.get("msg").asText());
+            }
+        } catch (Exception e) {
+            log.error("更新飞书表格记录异常", e);
+            throw new RuntimeException("更新飞书表格记录异常", e);
+        }
+    }
+
+    /**
      * 转换 JsonNode 为Java对象
      */
     private Object convertJsonNode(JsonNode node) {
