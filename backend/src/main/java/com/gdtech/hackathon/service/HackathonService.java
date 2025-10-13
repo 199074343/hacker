@@ -31,24 +31,86 @@ public class HackathonService {
 
     /**
      * 获取当前比赛阶段
+     * 逻辑：
+     * 1. 优先使用飞书配置表的配置值（方便产品验证）
+     * 2. 配置值为空时，根据当前时间自动判断阶段
+     * 3. 时间早于海选期，视为海选期
      */
     public CompetitionStage getCurrentStage() {
         try {
+            // 1. 读取飞书配置表
             String tableId = feishuConfig.getConfigTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
 
             for (Map<String, Object> record : records) {
                 if ("current_stage".equals(record.get("配置项"))) {
                     String stageCode = (String) record.get("配置值");
-                    return CompetitionStage.fromCode(stageCode);
+
+                    // 2. 如果配置值不为空，使用配置值（方便产品验证）
+                    if (stageCode != null && !stageCode.trim().isEmpty()) {
+                        log.debug("使用飞书配置的阶段: {}", stageCode);
+                        return CompetitionStage.fromCode(stageCode);
+                    }
+
+                    // 3. 配置值为空，根据当前时间自动判断
+                    log.debug("配置值为空，根据当前时间自动判断阶段");
+                    return determineStageByTime();
                 }
             }
         } catch (Exception e) {
-            log.warn("从飞书获取比赛阶段失败，使用默认值", e);
+            log.warn("从飞书获取比赛阶段失败，根据时间判断", e);
         }
 
-        // 默认返回投资期（用于演示）
-        return CompetitionStage.INVESTMENT;
+        // 4. 读取失败，根据时间判断
+        return determineStageByTime();
+    }
+
+    /**
+     * 根据当前时间判断比赛阶段
+     */
+    private CompetitionStage determineStageByTime() {
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        try {
+            // 解析各阶段时间（从application.yml配置）
+            LocalDateTime selectionStart = LocalDateTime.parse("2024-10-24 24:00:00", formatter);
+            LocalDateTime selectionEnd = LocalDateTime.parse("2024-11-07 12:00:00", formatter);
+            LocalDateTime lockEnd = LocalDateTime.parse("2024-11-14 00:00:00", formatter);
+            LocalDateTime investmentEnd = LocalDateTime.parse("2024-11-14 18:00:00", formatter);
+
+            // 时间早于海选期，视为海选期
+            if (now.isBefore(selectionStart)) {
+                log.info("当前时间早于海选期，视为海选期");
+                return CompetitionStage.SELECTION;
+            }
+
+            // 海选期：10/24 24:00 - 11/7 12:00
+            if (now.isBefore(selectionEnd)) {
+                log.info("当前时间处于海选期");
+                return CompetitionStage.SELECTION;
+            }
+
+            // 锁定期：11/7 12:00 - 11/14 0:00
+            if (now.isBefore(lockEnd)) {
+                log.info("当前时间处于锁定期");
+                return CompetitionStage.LOCK;
+            }
+
+            // 投资期：11/14 0:00 - 18:00
+            if (now.isBefore(investmentEnd)) {
+                log.info("当前时间处于投资期");
+                return CompetitionStage.INVESTMENT;
+            }
+
+            // 结束期：11/14 18:00之后
+            log.info("当前时间处于结束期");
+            return CompetitionStage.ENDED;
+
+        } catch (Exception e) {
+            log.error("解析时间配置失败，默认返回海选期", e);
+            return CompetitionStage.SELECTION;
+        }
     }
 
     /**
