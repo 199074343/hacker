@@ -10,6 +10,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -32,6 +33,88 @@ public class BaiduTongjiService {
         this.baiduConfig = baiduConfig;
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+    }
+
+    /**
+     * 服务启动时初始化所有账号的Token
+     */
+    @PostConstruct
+    public void initializeTokens() {
+        log.info("开始初始化百度统计账号的Token...");
+        for (Map.Entry<String, BaiduConfig.AccountCredentials> entry : baiduConfig.getAccounts().entrySet()) {
+            String accountName = entry.getKey();
+            BaiduConfig.AccountCredentials credentials = entry.getValue();
+
+            // 跳过未配置client_id的账号
+            if (credentials.getClientId() == null || credentials.getClientId().startsWith("your_")) {
+                log.warn("账号 {} 未配置，跳过Token初始化", accountName);
+                continue;
+            }
+
+            try {
+                log.info("初始化账号 {} 的Token...", accountName);
+                getTokenByClientCredentials(accountName);
+                log.info("账号 {} Token初始化成功", accountName);
+            } catch (Exception e) {
+                log.error("账号 {} Token初始化失败", accountName, e);
+            }
+        }
+        log.info("百度统计账号Token初始化完成");
+    }
+
+    /**
+     * 通过Client Credentials获取初始Token
+     * 使用client_id和client_secret获取access_token
+     */
+    public void getTokenByClientCredentials(String accountName) {
+        try {
+            BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(accountName);
+            if (credentials == null) {
+                log.error("账号 {} 配置不存在", accountName);
+                return;
+            }
+
+            log.info("通过Client Credentials获取账号 {} 的token...", accountName);
+
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("grant_type", "client_credentials");
+            params.add("client_id", credentials.getClientId());
+            params.add("client_secret", credentials.getClientSecret());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    baiduConfig.getTokenUrl(),
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                JsonNode jsonNode = objectMapper.readTree(response.getBody());
+
+                if (jsonNode.has("access_token")) {
+                    String accessToken = jsonNode.get("access_token").asText();
+                    credentials.setAccessToken(accessToken);
+
+                    if (jsonNode.has("refresh_token")) {
+                        credentials.setRefreshToken(jsonNode.get("refresh_token").asText());
+                    }
+
+                    if (jsonNode.has("expires_in")) {
+                        long expiresIn = jsonNode.get("expires_in").asLong();
+                        credentials.setTokenExpires(System.currentTimeMillis() + (expiresIn * 1000));
+                        log.info("账号 {} Token获取成功，过期时间: {} 秒后", accountName, expiresIn);
+                    }
+                } else {
+                    log.error("账号 {} 获取Token失败: {}", accountName, response.getBody());
+                }
+            }
+        } catch (Exception e) {
+            log.error("账号 {} 通过Client Credentials获取Token失败", accountName, e);
+        }
     }
 
     /**
@@ -105,9 +188,24 @@ public class BaiduTongjiService {
      * 确保指定账号的Token有效
      */
     private void ensureValidToken(String accountName) {
-        if (isTokenExpired(accountName)) {
+        BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(accountName);
+        if (credentials == null) {
+            log.error("账号 {} 配置不存在", accountName);
+            return;
+        }
+
+        // 如果没有access_token，先通过client credentials获取
+        if (credentials.getAccessToken() == null || credentials.getAccessToken().isEmpty()) {
+            log.info("账号 {} 没有access_token，正在获取...", accountName);
+            getTokenByClientCredentials(accountName);
+        } else if (isTokenExpired(accountName)) {
             log.info("账号 {} Token已过期，正在刷新...", accountName);
-            refreshAccessToken(accountName);
+            // 如果有refresh_token，使用refresh_token刷新，否则重新获取
+            if (credentials.getRefreshToken() != null && !credentials.getRefreshToken().isEmpty()) {
+                refreshAccessToken(accountName);
+            } else {
+                getTokenByClientCredentials(accountName);
+            }
         }
     }
 

@@ -54,12 +54,22 @@ public class BaiduConfig {
         private String clientSecret;
 
         /**
-         * Access Token
+         * 百度统计用户名（用于OAuth授权）
+         */
+        private String username;
+
+        /**
+         * 百度统计密码（用于OAuth授权）
+         */
+        private String password;
+
+        /**
+         * Access Token（运行时动态生成）
          */
         private String accessToken;
 
         /**
-         * Refresh Token
+         * Refresh Token（运行时动态生成）
          */
         private String refreshToken;
 

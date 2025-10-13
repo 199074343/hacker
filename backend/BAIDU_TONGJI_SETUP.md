@@ -84,15 +84,15 @@ baidu:
     sync-interval: 10  # UV同步间隔（分钟）
     accounts:
       account1:
-        client-id: your_api_key_1
-        client-secret: your_secret_key_1
-        access-token: your_access_token_1
-        refresh-token: your_refresh_token_1
+        client-id: your_api_key_1       # 必填：API Key (AK)
+        client-secret: your_secret_key_1 # 必填：Secret Key (SK)
+        username: your_username_1        # 可选：用于OAuth授权
+        password: your_password_1        # 可选：用于OAuth授权
       account2:
         client-id: your_api_key_2
         client-secret: your_secret_key_2
-        access-token: your_access_token_2
-        refresh-token: your_refresh_token_2
+        username: your_username_2
+        password: your_password_2
 ```
 
 **环境变量方式**（推荐生产环境）：
@@ -101,17 +101,20 @@ baidu:
 # 账号1
 export BAIDU_ACCOUNT1_CLIENT_ID=your_api_key_1
 export BAIDU_ACCOUNT1_CLIENT_SECRET=your_secret_key_1
-export BAIDU_ACCOUNT1_ACCESS_TOKEN=your_access_token_1
-export BAIDU_ACCOUNT1_REFRESH_TOKEN=your_refresh_token_1
+export BAIDU_ACCOUNT1_USERNAME=your_username_1
+export BAIDU_ACCOUNT1_PASSWORD=your_password_1
 
 # 账号2
 export BAIDU_ACCOUNT2_CLIENT_ID=your_api_key_2
 export BAIDU_ACCOUNT2_CLIENT_SECRET=your_secret_key_2
-export BAIDU_ACCOUNT2_ACCESS_TOKEN=your_access_token_2
-export BAIDU_ACCOUNT2_REFRESH_TOKEN=your_refresh_token_2
+export BAIDU_ACCOUNT2_USERNAME=your_username_2
+export BAIDU_ACCOUNT2_PASSWORD=your_password_2
 ```
 
-**注意事项**：
+**重要说明**：
+- ⚠️ **只需要配置 client_id 和 client_secret，access_token 和 refresh_token 会自动生成**
+- 系统启动时会自动通过Client Credentials方式获取Token
+- Token过期后会自动刷新，无需手动维护
 - 账号标识（account1, account2）可以自定义，但需要与飞书表格中的"百度统计账号"字段值一致
 - 如果有更多账号，继续添加 account3, account4...
 
@@ -160,7 +163,19 @@ mvn spring-boot:run -Dspring.profiles.active=dev
 
 ### 查看日志
 
-UV同步任务会输出以下日志：
+**服务启动时的Token初始化日志**：
+
+```
+2025-10-13 16:55:00 - 开始初始化百度统计账号的Token...
+2025-10-13 16:55:00 - 初始化账号 account1 的Token...
+2025-10-13 16:55:01 - 通过Client Credentials获取账号 account1 的token...
+2025-10-13 16:55:02 - 账号 account1 Token获取成功，过期时间: 2592000 秒后
+2025-10-13 16:55:02 - 账号 account1 Token初始化成功
+2025-10-13 16:55:02 - 账号 account2 未配置，跳过Token初始化
+2025-10-13 16:55:02 - 百度统计账号Token初始化完成
+```
+
+**UV同步任务日志**：
 
 ```
 2025-10-13 17:00:00 - 开始同步项目UV数据...
