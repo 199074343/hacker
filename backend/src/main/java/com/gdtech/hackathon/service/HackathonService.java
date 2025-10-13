@@ -300,24 +300,71 @@ public class HackathonService {
 
     private void calculateRankings(List<Project> projects) {
         CompetitionStage stage = getCurrentStage();
+        int totalTeams = projects.size();
 
         if (stage == CompetitionStage.INVESTMENT || stage == CompetitionStage.ENDED) {
-            // 投资期：权重值排名
-            projects.forEach(p -> {
-                double weight = p.getUv() * 0.4 + p.getInvestment() * 0.6;
-                p.setWeightedScore(weight);
-            });
+            // 投资期：基于排名分数的加权排名
+            // 算法：累积UV排名分数*40% + 融资额排名分数*60%
 
-            projects.sort((a, b) -> {
-                int cmp = Double.compare(b.getWeightedScore(), a.getWeightedScore());
+            // 步骤1：按UV排序，计算UV排名分数
+            List<Project> uvSorted = new ArrayList<>(projects);
+            uvSorted.sort((a, b) -> {
+                int cmp = Long.compare(b.getUv(), a.getUv());
                 if (cmp != 0) return cmp;
-                cmp = Integer.compare(b.getInvestment(), a.getInvestment());
-                if (cmp != 0) return cmp;
-                // 处理teamNumber为null的情况
                 String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
                 String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
                 return teamNumA.compareTo(teamNumB);
             });
+
+            Map<Long, Double> uvScores = new HashMap<>();
+            for (int i = 0; i < uvSorted.size(); i++) {
+                int rank = i + 1; // UV排名（1-based）
+                // UV排名分数 = (队伍总数+1-UV排名) / 队伍总数 * 100
+                double score = (double)(totalTeams + 1 - rank) / totalTeams * 100;
+                uvScores.put(uvSorted.get(i).getId(), score);
+            }
+
+            // 步骤2：按投资额排序，计算投资额排名分数
+            List<Project> investmentSorted = new ArrayList<>(projects);
+            investmentSorted.sort((a, b) -> {
+                int cmp = Integer.compare(b.getInvestment(), a.getInvestment());
+                if (cmp != 0) return cmp;
+                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                return teamNumA.compareTo(teamNumB);
+            });
+
+            Map<Long, Double> investmentScores = new HashMap<>();
+            for (int i = 0; i < investmentSorted.size(); i++) {
+                int rank = i + 1; // 投资额排名（1-based）
+                // 投资额排名分数 = (队伍总数+1-投资额排名) / 队伍总数 * 100
+                double score = (double)(totalTeams + 1 - rank) / totalTeams * 100;
+                investmentScores.put(investmentSorted.get(i).getId(), score);
+            }
+
+            // 步骤3：计算加权分数并设置到项目
+            projects.forEach(p -> {
+                double uvScore = uvScores.get(p.getId());
+                double investScore = investmentScores.get(p.getId());
+                // 加权分数 = UV排名分数*40% + 投资额排名分数*60%
+                double weightedScore = uvScore * 0.4 + investScore * 0.6;
+                p.setWeightedScore(weightedScore);
+            });
+
+            // 步骤4：按加权分数排序
+            projects.sort((a, b) -> {
+                int cmp = Double.compare(b.getWeightedScore(), a.getWeightedScore());
+                if (cmp != 0) return cmp;
+                // 分数相同时，按投资额排序
+                cmp = Integer.compare(b.getInvestment(), a.getInvestment());
+                if (cmp != 0) return cmp;
+                // 投资额也相同时，按队伍编号排序
+                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                return teamNumA.compareTo(teamNumB);
+            });
+
+            log.debug("投资期排名算法：基于排名分数加权 (UV排名*40% + 投资额排名*60%)");
         } else {
             // 其他阶段：UV排名
             projects.sort((a, b) -> {
