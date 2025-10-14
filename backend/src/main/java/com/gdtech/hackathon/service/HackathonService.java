@@ -473,12 +473,15 @@ public class HackathonService {
                 return teamNumA.compareTo(teamNumB);
             });
 
+            Map<Long, Integer> uvRankMap = new HashMap<>();
             Map<Long, Double> uvScores = new HashMap<>();
             for (int i = 0; i < uvSorted.size(); i++) {
                 int rank = i + 1; // UV排名（1-based）
+                Project p = uvSorted.get(i);
                 // UV排名分数 = (队伍总数+1-UV排名) / 队伍总数 * 100
                 double score = (double)(totalTeams + 1 - rank) / totalTeams * 100;
-                uvScores.put(uvSorted.get(i).getId(), score);
+                uvRankMap.put(p.getId(), rank);
+                uvScores.put(p.getId(), score);
             }
 
             // 步骤2：按投资额排序，计算投资额排名分数
@@ -491,21 +494,35 @@ public class HackathonService {
                 return teamNumA.compareTo(teamNumB);
             });
 
+            Map<Long, Integer> investmentRankMap = new HashMap<>();
             Map<Long, Double> investmentScores = new HashMap<>();
             for (int i = 0; i < investmentSorted.size(); i++) {
                 int rank = i + 1; // 投资额排名（1-based）
+                Project p = investmentSorted.get(i);
                 // 投资额排名分数 = (队伍总数+1-投资额排名) / 队伍总数 * 100
                 double score = (double)(totalTeams + 1 - rank) / totalTeams * 100;
-                investmentScores.put(investmentSorted.get(i).getId(), score);
+                investmentRankMap.put(p.getId(), rank);
+                investmentScores.put(p.getId(), score);
             }
 
             // 步骤3：计算加权分数并设置到项目
+            log.info("================== 投资期排名计算详情 ==================");
+            log.info("总队伍数: {}", totalTeams);
             projects.forEach(p -> {
+                int uvRank = uvRankMap.get(p.getId());
+                int investRank = investmentRankMap.get(p.getId());
                 double uvScore = uvScores.get(p.getId());
                 double investScore = investmentScores.get(p.getId());
                 // 加权分数 = UV排名分数*40% + 投资额排名分数*60%
                 double weightedScore = uvScore * 0.4 + investScore * 0.6;
                 p.setWeightedScore(weightedScore);
+
+                // 打印详细排名信息
+                log.info("项目ID: {}, 名称: {}, 队伍编号: {}", p.getId(), p.getName(), p.getTeamNumber());
+                log.info("  UV: {}, UV排名: {}, UV排名分数: {}", p.getUv(), uvRank, String.format("%.2f", uvScore));
+                log.info("  投资额: {}万元, 投资额排名: {}, 投资额排名分数: {}", p.getInvestment(), investRank, String.format("%.2f", investScore));
+                log.info("  最终加权分数: {} ({}*0.4 + {}*0.6)", String.format("%.2f", weightedScore), String.format("%.2f", uvScore), String.format("%.2f", investScore));
+                log.info("---");
             });
 
             // 步骤4：按加权分数排序
@@ -521,7 +538,16 @@ public class HackathonService {
                 return teamNumA.compareTo(teamNumB);
             });
 
-            log.debug("投资期排名算法：基于排名分数加权 (UV排名*40% + 投资额排名*60%)");
+            // 打印最终排名结果
+            log.info("================== 最终排名结果 ==================");
+            for (int i = 0; i < Math.min(projects.size(), 20); i++) {
+                Project p = projects.get(i);
+                log.info("排名#{}: {} (队伍#{}) - 加权分数: {}, UV: {}, 投资: {}万元",
+                        i + 1, p.getName(), p.getTeamNumber(),
+                        String.format("%.2f", p.getWeightedScore()),
+                        p.getUv(), p.getInvestment());
+            }
+            log.info("投资期排名算法：基于排名分数加权 (UV排名*40% + 投资额排名*60%)");
         } else {
             // 其他阶段：UV排名
             projects.sort((a, b) -> {
