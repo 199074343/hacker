@@ -48,6 +48,12 @@ async function fetchProjects() {
 
         if (result.code === 200) {
             projects = result.data;
+
+            // 如果是投资期或结束期，打印排名详情
+            if (currentStage === 'investment' || currentStage === 'ended') {
+                printRankingDetails(projects);
+            }
+
             return projects;
         } else {
             console.error('获取项目列表失败:', result.message);
@@ -57,6 +63,59 @@ async function fetchProjects() {
         console.error('获取项目列表异常:', error);
         return [];
     }
+}
+
+/**
+ * 打印投资期排名详情到浏览器控制台
+ */
+function printRankingDetails(projects) {
+    console.log('%c================== 投资期排名计算详情 ==================', 'color: #00f2fe; font-size: 16px; font-weight: bold');
+    console.log(`总队伍数: ${projects.length}`);
+    console.log('');
+
+    // 按UV排序
+    const uvSorted = [...projects].sort((a, b) => {
+        if (b.uv !== a.uv) return b.uv - a.uv;
+        return (a.teamNumber || '999').localeCompare(b.teamNumber || '999');
+    });
+
+    // 按投资额排序
+    const investmentSorted = [...projects].sort((a, b) => {
+        if (b.investment !== a.investment) return b.investment - a.investment;
+        return (a.teamNumber || '999').localeCompare(b.teamNumber || '999');
+    });
+
+    // 计算排名
+    const uvRankMap = {};
+    const investRankMap = {};
+    uvSorted.forEach((p, i) => { uvRankMap[p.id] = i + 1; });
+    investmentSorted.forEach((p, i) => { investRankMap[p.id] = i + 1; });
+
+    // 打印每个项目的详细信息
+    projects.forEach(p => {
+        const totalTeams = projects.length;
+        const uvRank = uvRankMap[p.id];
+        const investRank = investRankMap[p.id];
+        const uvScore = (totalTeams + 1 - uvRank) / totalTeams * 100;
+        const investScore = (totalTeams + 1 - investRank) / totalTeams * 100;
+        const weightedScore = uvScore * 0.4 + investScore * 0.6;
+
+        console.log(`%c项目ID: ${p.id}, 名称: ${p.name}, 队伍编号: ${p.teamNumber}`, 'color: #4facfe; font-weight: bold');
+        console.log(`  UV: ${p.uv}, UV排名: ${uvRank}, UV排名分数: ${uvScore.toFixed(2)}`);
+        console.log(`  投资额: ${p.investment}万元, 投资额排名: ${investRank}, 投资额排名分数: ${investScore.toFixed(2)}`);
+        console.log(`  最终加权分数: ${weightedScore.toFixed(2)} (${uvScore.toFixed(2)}*0.4 + ${investScore.toFixed(2)}*0.6)`);
+        console.log(`  后端返回的加权分数: ${p.weightedScore?.toFixed(2) || 'N/A'}`);
+        console.log('---');
+    });
+
+    console.log('');
+    console.log('%c================== 最终排名结果 ==================', 'color: #00f2fe; font-size: 16px; font-weight: bold');
+    projects.slice(0, 20).forEach((p, i) => {
+        console.log(`%c排名#${p.rank}: ${p.name} (队伍#${p.teamNumber})`, 'color: #ffd700; font-weight: bold');
+        console.log(`  加权分数: ${p.weightedScore?.toFixed(2) || 'N/A'}, UV: ${p.uv}, 投资: ${p.investment}万元`);
+    });
+    console.log('');
+    console.log('%c排名算法: UV排名40%权重 + 投资额排名60%权重', 'color: #4facfe; font-style: italic');
 }
 
 /**
