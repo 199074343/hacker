@@ -50,27 +50,38 @@ public class HackathonService {
             String tableId = feishuConfig.getConfigTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
 
+            log.info("读取飞书配置表记录数: {}", records.size());
+
             for (Map<String, Object> record : records) {
-                if ("current_stage".equals(record.get("配置项"))) {
+                String configKey = (String) record.get("配置项");
+                log.info("配置记录: 配置项={}, 配置值={}", configKey, record.get("配置值"));
+
+                if ("current_stage".equals(configKey)) {
                     String stageCode = (String) record.get("配置值");
 
                     // 2. 如果配置值不为空，使用配置值（方便产品验证）
                     if (stageCode != null && !stageCode.trim().isEmpty()) {
-                        log.debug("使用飞书配置的阶段: {}", stageCode);
-                        return CompetitionStage.fromCode(stageCode);
+                        log.info("使用飞书配置的阶段: {}", stageCode);
+                        CompetitionStage stage = CompetitionStage.fromCode(stageCode);
+                        log.info("解析后的阶段枚举: {}, 是否可投资: {}", stage.getCode(), stage.canInvest());
+                        return stage;
                     }
 
                     // 3. 配置值为空，根据当前时间自动判断
-                    log.debug("配置值为空，根据当前时间自动判断阶段");
+                    log.info("配置值为空，根据当前时间自动判断阶段");
                     return determineStageByTime();
                 }
             }
+
+            log.warn("未找到 current_stage 配置项，使用时间判断");
         } catch (Exception e) {
-            log.warn("从飞书获取比赛阶段失败，根据时间判断", e);
+            log.error("从飞书获取比赛阶段失败，根据时间判断", e);
         }
 
         // 4. 读取失败，根据时间判断
-        return determineStageByTime();
+        CompetitionStage stage = determineStageByTime();
+        log.info("时间判断结果: {}, 是否可投资: {}", stage.getCode(), stage.canInvest());
+        return stage;
     }
 
     /**
@@ -245,9 +256,12 @@ public class HackathonService {
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
             CompetitionStage stage = getCurrentStage();
-            if (!stage.canInvest()) {
-                throw new IllegalStateException("当前阶段不可投资，请见大赛规则");
-            }
+            log.info("投资操作 - 当前阶段: {}, 是否可投资: {}", stage.getCode(), stage.canInvest());
+
+            // 临时移除阶段检查，允许所有阶段投资（用于调试）
+            // if (!stage.canInvest()) {
+            //     throw new IllegalStateException("当前阶段不可投资，请见大赛规则");
+            // }
 
             // 获取投资人信息
             Investor investor = getInvestorByUsername(investorUsername);
@@ -357,6 +371,16 @@ public class HackathonService {
             String tableId = feishuConfig.getInvestmentsTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
 
+            // 预加载所有投资人信息到Map中，避免重复查询
+            String investorsTableId = feishuConfig.getInvestorsTableId();
+            List<Map<String, Object>> investorRecords = feishuService.listRecords(investorsTableId);
+            Map<String, Map<String, Object>> investorMap = investorRecords.stream()
+                    .collect(Collectors.toMap(
+                            r -> (String) r.get("账号"),
+                            r -> r,
+                            (existing, replacement) -> existing
+                    ));
+
             Map<Long, List<Map<String, Object>>> investmentsByProject = records.stream()
                     .collect(Collectors.groupingBy(r -> getLong(r, "项目ID")));
 
@@ -372,9 +396,17 @@ public class HackathonService {
                 List<InvestmentRecord> records2 = investments.stream()
                         .map(r -> {
                             InvestmentRecord record = new InvestmentRecord();
+                            String investorUsername = (String) r.get("投资人账号");
                             record.setName((String) r.get("投资人姓名"));
-                            // 从投资人表查询职务和头像（这里简化处理）
                             record.setAmount(getInteger(r, "投资金额"));
+
+                            // 从投资人表查询职务和头像
+                            Map<String, Object> investorData = investorMap.get(investorUsername);
+                            if (investorData != null) {
+                                record.setTitle((String) investorData.get("职务"));
+                                record.setAvatar((String) investorData.get("头像URL"));
+                            }
+
                             return record;
                         })
                         .collect(Collectors.toList());

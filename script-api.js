@@ -154,7 +154,11 @@ async function initializeData() {
     const stageData = await fetchCurrentStage();
     const projectsData = await fetchProjects();
 
-    console.log('初始化完成:', { stage: currentStage, projectCount: projects.length });
+    console.log('初始化完成:', {
+        stage: currentStage,
+        projectCount: projects.length,
+        canInvest: stageConfig[currentStage]?.canInvest
+    });
 }
 
 // ===== UI更新函数 =====
@@ -323,6 +327,11 @@ async function handleLogin(e) {
 
         // 重置表单
         document.getElementById('loginForm').reset();
+
+        // 自动跳转到投资人页面
+        setTimeout(() => {
+            showInvestorPage();
+        }, 500); // 延迟500ms，等待toast显示和模态框关闭动画
     } else {
         showToast('账号或密码错误！', 'error');
     }
@@ -332,6 +341,9 @@ async function handleLogin(e) {
  * 显示投资模态框
  */
 function showInvestModal(projectId) {
+    // 调试日志
+    console.log('投资按钮点击 - 当前阶段:', currentStage, '是否可投资:', stageConfig[currentStage]?.canInvest);
+
     if (!stageConfig[currentStage]?.canInvest) {
         showToast('当前阶段不可投资，请见大赛规则', 'warning');
         return;
@@ -414,8 +426,118 @@ async function showInvestorPage() {
         currentUser = investor;
     }
 
-    // ... 其余代码同原script.js的showInvestorPage函数 ...
-    // （为节省篇幅，这里省略，可以复用原来的代码）
+    // 隐藏主要内容，显示投资人页面
+    document.querySelector('.main-content').style.display = 'none';
+
+    // 创建投资人页面内容
+    const investorPageHTML = `
+        <div class="container-fluid investor-page" style="padding-top: 100px; padding-bottom: 50px;">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <!-- 返回按钮 -->
+                    <div class="mb-4">
+                        <button class="btn glass-btn" onclick="backToMainPage()">
+                            <i class="fas fa-arrow-left me-2"></i>返回主页
+                        </button>
+                    </div>
+
+                    <!-- 投资人信息卡片 -->
+                    <div class="glass-card mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <img src="${currentUser.avatar || './default-avatar.svg'}" alt="${currentUser.name}"
+                                     style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.3);">
+                            </div>
+                            <div class="col">
+                                <h3 class="text-white mb-1">${currentUser.name}</h3>
+                                <p class="text-light mb-1">${currentUser.title}</p>
+                                <p class="text-info mb-0">账号：${currentUser.username}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投资额度信息 -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="glass-card text-center">
+                                <h6 class="text-warning mb-2">
+                                    <i class="fas fa-wallet me-2"></i>初始额度
+                                </h6>
+                                <h3 class="text-white">${currentUser.initialAmount}万元</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="glass-card text-center">
+                                <h6 class="text-info mb-2">
+                                    <i class="fas fa-coins me-2"></i>剩余额度
+                                </h6>
+                                <h3 class="text-white">${currentUser.remainingAmount}万元</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="glass-card text-center">
+                                <h6 class="text-success mb-2">
+                                    <i class="fas fa-chart-line me-2"></i>已投资
+                                </h6>
+                                <h3 class="text-white">${currentUser.investedAmount || (currentUser.initialAmount - currentUser.remainingAmount)}万元</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投资记录 -->
+                    <div class="glass-card">
+                        <h4 class="text-white mb-3">
+                            <i class="fas fa-history me-2"></i>投资记录
+                        </h4>
+                        ${currentUser.investmentHistory && currentUser.investmentHistory.length > 0 ? `
+                            <div class="investment-history">
+                                ${currentUser.investmentHistory.map((record, index) => `
+                                    <div class="investment-record-item glass-card mb-3 fade-in" style="animation-delay: ${index * 0.1}s">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h6 class="text-white mb-1">${record.projectName}</h6>
+                                                <p class="text-info small mb-0">
+                                                    <i class="fas fa-clock me-1"></i>${formatTime(record.time)}
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6 text-md-end">
+                                                <div class="investment-amount-display">
+                                                    <span class="text-warning fw-bold fs-4">${record.amount}万元</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="text-center py-5">
+                                <i class="fas fa-inbox text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <p class="text-light mt-3">暂无投资记录</p>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 在主要内容后插入投资人页面
+    document.querySelector('.main-content').insertAdjacentHTML('afterend', investorPageHTML);
+}
+
+/**
+ * 格式化时间显示
+ */
+function formatTime(time) {
+    if (!time) return '';
+
+    // 如果是LocalDateTime对象(从API返回)，格式化显示
+    if (typeof time === 'object' && time.year) {
+        return `${time.year}-${String(time.monthValue).padStart(2, '0')}-${String(time.dayOfMonth).padStart(2, '0')} ${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}:${String(time.second).padStart(2, '0')}`;
+    }
+
+    // 如果是字符串，直接返回
+    return time.toString();
 }
 
 /**
