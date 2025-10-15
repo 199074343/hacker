@@ -547,10 +547,8 @@ async function handleInvestment(e) {
             showToast(`成功投资${amount}万元！`, 'success');
 
             const modalElement = document.getElementById('investModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalElement);
-            if (modalInstance) {
-                modalInstance.hide();
-            }
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modalInstance.hide();
 
             // 同步刷新投资人信息和项目数据
             currentUser.remainingAmount -= amount;

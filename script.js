@@ -344,7 +344,7 @@ function handleLogin(e) {
     if (investor) {
         currentUser = investor;
         showToast('登录成功！', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('loginModal')).hide();
         
         // 更新登录按钮为头像+姓名样式
         const loginBtn = document.querySelector('[onclick="showLoginModal()"]');
@@ -563,7 +563,7 @@ function handleInvestment(e) {
     });
     
     showToast(`成功投资${amount}万元！`, 'success');
-    bootstrap.Modal.getInstance(document.getElementById('investModal')).hide();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('investModal')).hide();
     
     // 重新渲染项目列表
     renderProjects();
