@@ -277,9 +277,41 @@ public class HackathonService {
                 return null;
             }
 
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            for (Map<String, Object> fallbackRecord : records) {
+                if (fieldValueEquals(fallbackRecord.get("账号"), username)) {
+                    String recordPassword = (String) fallbackRecord.get("初始密码");
+                    Boolean enabled = (Boolean) fallbackRecord.getOrDefault("是否启用", true);
+                    if (password.equals(recordPassword) && Boolean.TRUE.equals(enabled)) {
+                        Investor investor = convertToInvestor(fallbackRecord);
+                        enrichInvestorWithHistory(investor);
+                        return investor;
+                    }
+                    return null;
+                }
+            }
+
             return null; // 登录失败
         } catch (Exception e) {
             log.error("投资人登录失败", e);
+            try {
+                String tableId = feishuConfig.getInvestorsTableId();
+                List<Map<String, Object>> records = feishuService.listRecords(tableId);
+                for (Map<String, Object> fallbackRecord : records) {
+                    if (fieldValueEquals(fallbackRecord.get("账号"), username)) {
+                        String recordPassword = (String) fallbackRecord.get("初始密码");
+                        Boolean enabled = (Boolean) fallbackRecord.getOrDefault("是否启用", true);
+                        if (password.equals(recordPassword) && Boolean.TRUE.equals(enabled)) {
+                            Investor investor = convertToInvestor(fallbackRecord);
+                            enrichInvestorWithHistory(investor);
+                            return investor;
+                        }
+                        return null;
+                    }
+                }
+            } catch (Exception ex) {
+                log.error("回退登录校验失败", ex);
+            }
             return null;
         }
     }
@@ -395,8 +427,25 @@ public class HackathonService {
             if (record != null && !record.isEmpty()) {
                 return convertToInvestor(record);
             }
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            return records.stream()
+                    .filter(r -> fieldValueEquals(r.get("账号"), username))
+                    .map(this::convertToInvestor)
+                    .findFirst()
+                    .orElse(null);
         } catch (Exception e) {
             log.error("获取投资人失败", e);
+            try {
+                String tableId = feishuConfig.getInvestorsTableId();
+                List<Map<String, Object>> records = feishuService.listRecords(tableId);
+                return records.stream()
+                        .filter(r -> fieldValueEquals(r.get("账号"), username))
+                        .map(this::convertToInvestor)
+                        .findFirst()
+                        .orElse(null);
+            } catch (Exception ex) {
+                log.error("回退获取投资人失败", ex);
+            }
         }
         return null;
     }
@@ -828,15 +877,29 @@ public class HackathonService {
     private Map<String, Object> findRecordByField(String tableId, String fieldName, Object value) {
         try {
             String filter = buildFilterExpression(fieldName, value);
-            if (filter == null) {
-                return null;
+            if (filter != null) {
+                List<Map<String, Object>> records = feishuService.listRecords(tableId, filter, 10);
+                if (!records.isEmpty()) {
+                    return records.get(0);
+                }
             }
-            List<Map<String, Object>> records = feishuService.listRecords(tableId, filter, 10);
-            if (!records.isEmpty()) {
-                return records.get(0);
-            }
+
+            List<Map<String, Object>> fallback = feishuService.listRecords(tableId);
+            return fallback.stream()
+                    .filter(record -> fieldValueEquals(record.get(fieldName), value))
+                    .findFirst()
+                    .orElse(null);
         } catch (Exception e) {
-            log.warn("根据字段 {}={} 查询记录失败", fieldName, value, e);
+            log.warn("根据字段 {}={} 查询记录失败，尝试回退查询", fieldName, value, e);
+            try {
+                List<Map<String, Object>> fallback = feishuService.listRecords(tableId);
+                return fallback.stream()
+                        .filter(record -> fieldValueEquals(record.get(fieldName), value))
+                        .findFirst()
+                        .orElse(null);
+            } catch (Exception ex) {
+                log.warn("回退查询字段 {}={} 时失败", fieldName, value, ex);
+            }
         }
         return null;
     }
@@ -859,6 +922,22 @@ public class HackathonService {
             return "";
         }
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private boolean fieldValueEquals(Object recordValue, Object targetValue) {
+        if (recordValue == null || targetValue == null) {
+            return Objects.equals(recordValue, targetValue);
+        }
+
+        if (recordValue instanceof Number && targetValue instanceof Number) {
+            return Double.compare(((Number) recordValue).doubleValue(), ((Number) targetValue).doubleValue()) == 0;
+        }
+
+        if (recordValue instanceof Number || targetValue instanceof Number) {
+            return recordValue.toString().equals(targetValue.toString());
+        }
+
+        return Objects.equals(recordValue.toString(), targetValue.toString());
     }
 
     private static class StageWindow {
