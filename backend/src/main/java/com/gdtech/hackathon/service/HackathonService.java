@@ -30,7 +30,6 @@ public class HackathonService {
 
     // 内存缓存投资记录，避免并发问题（生产环境应使用Redis）
     private final Map<String, Integer> investorRemainingAmount = new ConcurrentHashMap<>();
-
     public HackathonService(FeishuService feishuService,
                             FeishuConfig feishuConfig,
                             HackathonProperties hackathonProperties) {
@@ -47,7 +46,6 @@ public class HackathonService {
      * 3. 时间早于海选期，视为海选期
      * 缓存1小时
      */
-    @Cacheable(value = "currentStage", unless = "#result == null")
     public CompetitionStage getCurrentStage() {
         try {
             // 1. 读取飞书配置表
@@ -462,12 +460,123 @@ public class HackathonService {
     private void calculateRankings(List<Project> projects) {
         CompetitionStage stage = getCurrentStage();
         int totalTeams = projects.size();
+        int qualifiedCount = hackathonProperties.getQualifiedCount();
 
-        if (stage == CompetitionStage.INVESTMENT || stage == CompetitionStage.ENDED) {
-            // 投资期：基于排名分数的加权排名
-            // 算法：累积UV排名分数*40% + 融资额排名分数*60%
+        if (stage == CompetitionStage.SELECTION) {
+            clearQualifiedProjectsConfig();
+            // 海选期：按UV排名，前15名晋级
+            projects.sort((a, b) -> {
+                int cmp = Long.compare(b.getUv(), a.getUv());
+                if (cmp != 0) return cmp;
+                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                return teamNumA.compareTo(teamNumB);
+            });
 
-            // 步骤1：按UV排序，计算UV排名分数
+            // 设置排名和晋级状态
+            for (int i = 0; i < projects.size(); i++) {
+                projects.get(i).setRank(i + 1);
+                projects.get(i).setQualified(i < qualifiedCount);
+            }
+
+            log.debug("海选期排名计算完成，按UV排名");
+
+        } else if (stage == CompetitionStage.LOCK) {
+            // 锁定期：晋级名单固定（从飞书配置表读取），晋级区和非晋级区分别按UV排序
+
+            // 步骤1：获取晋级项目ID列表（从飞书配置表）
+            List<Long> qualifiedProjectIds = resolveQualifiedProjectIds(projects, qualifiedCount);
+
+            // 如果配置表为空，回退到按海选期规则计算
+            if (qualifiedProjectIds.isEmpty()) {
+                log.warn("锁定期未找到晋级项目配置，回退到按UV排名前{}名", qualifiedCount);
+                // 按UV排序
+                projects.sort((a, b) -> {
+                    int cmp = Long.compare(b.getUv(), a.getUv());
+                    if (cmp != 0) return cmp;
+                    String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                    String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                    return teamNumA.compareTo(teamNumB);
+                });
+                for (int i = 0; i < projects.size(); i++) {
+                    projects.get(i).setRank(i + 1);
+                    projects.get(i).setQualified(i < qualifiedCount);
+                }
+            } else {
+                // 步骤2：标记晋级状态
+                final Set<Long> finalQualifiedIds = new LinkedHashSet<>(qualifiedProjectIds);
+                projects.forEach(p -> p.setQualified(finalQualifiedIds.contains(p.getId())));
+
+                // 步骤3：分组并分别排序
+                List<Project> qualifiedProjects = projects.stream()
+                        .filter(Project::getQualified)
+                        .collect(Collectors.toList());
+                List<Project> nonQualifiedProjects = projects.stream()
+                        .filter(p -> !p.getQualified())
+                        .collect(Collectors.toList());
+
+                // 晋级区按UV排序
+                qualifiedProjects.sort((a, b) -> {
+                    int cmp = Long.compare(b.getUv(), a.getUv());
+                    if (cmp != 0) return cmp;
+                    String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                    String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                    return teamNumA.compareTo(teamNumB);
+                });
+
+                // 非晋级区按UV排序
+                nonQualifiedProjects.sort((a, b) -> {
+                    int cmp = Long.compare(b.getUv(), a.getUv());
+                    if (cmp != 0) return cmp;
+                    String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                    String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                    return teamNumA.compareTo(teamNumB);
+                });
+
+                // 步骤4：设置排名（晋级区和非晋级区分别计算）
+                for (int i = 0; i < qualifiedProjects.size(); i++) {
+                    qualifiedProjects.get(i).setRank(i + 1);
+                }
+                for (int i = 0; i < nonQualifiedProjects.size(); i++) {
+                    nonQualifiedProjects.get(i).setRank(i + 1);
+                }
+
+                // 步骤5：合并列表（晋级区在前）
+                projects.clear();
+                projects.addAll(qualifiedProjects);
+                projects.addAll(nonQualifiedProjects);
+
+                log.debug("锁定期排名计算完成，晋级项目{}个，非晋级项目{}个", qualifiedProjects.size(), nonQualifiedProjects.size());
+            }
+
+        } else if (stage == CompetitionStage.INVESTMENT || stage == CompetitionStage.ENDED) {
+            // 投资期/结束期：晋级名单固定，使用加权排名算法
+
+            // 步骤1：获取晋级项目ID列表
+            List<Long> qualifiedProjectIds = resolveQualifiedProjectIds(projects, qualifiedCount);
+
+            // 如果配置表为空，回退到按UV排名前15名
+            if (qualifiedProjectIds.isEmpty()) {
+                log.warn("投资期未找到晋级项目配置，回退到按UV排名前{}名", qualifiedCount);
+                projects.sort((a, b) -> {
+                    int cmp = Long.compare(b.getUv(), a.getUv());
+                    if (cmp != 0) return cmp;
+                    String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                    String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                    return teamNumA.compareTo(teamNumB);
+                });
+                for (int i = 0; i < projects.size(); i++) {
+                    projects.get(i).setRank(i + 1);
+                    projects.get(i).setQualified(i < qualifiedCount);
+                }
+                return;
+            }
+
+            // 步骤2：标记晋级状态
+            final Set<Long> finalQualifiedIds = new LinkedHashSet<>(qualifiedProjectIds);
+            projects.forEach(p -> p.setQualified(finalQualifiedIds.contains(p.getId())));
+
+            // 步骤3：按UV排序，计算UV排名分数
             List<Project> uvSorted = new ArrayList<>(projects);
             uvSorted.sort((a, b) -> {
                 int cmp = Long.compare(b.getUv(), a.getUv());
@@ -488,7 +597,7 @@ public class HackathonService {
                 uvScores.put(p.getId(), score);
             }
 
-            // 步骤2：按投资额排序，计算投资额排名分数
+            // 步骤4：按投资额排序，计算投资额排名分数
             List<Project> investmentSorted = new ArrayList<>(projects);
             investmentSorted.sort((a, b) -> {
                 int cmp = Integer.compare(b.getInvestment(), a.getInvestment());
@@ -509,7 +618,7 @@ public class HackathonService {
                 investmentScores.put(p.getId(), score);
             }
 
-            // 步骤3：计算加权分数并设置到项目
+            // 步骤5：计算加权分数并设置到项目
             projects.forEach(p -> {
                 int uvRank = uvRankMap.get(p.getId());
                 int investRank = investmentRankMap.get(p.getId());
@@ -520,8 +629,16 @@ public class HackathonService {
                 p.setWeightedScore(weightedScore);
             });
 
-            // 步骤4：按加权分数排序
-            projects.sort((a, b) -> {
+            // 步骤6：分组
+            List<Project> qualifiedProjects = projects.stream()
+                    .filter(Project::getQualified)
+                    .collect(Collectors.toList());
+            List<Project> nonQualifiedProjects = projects.stream()
+                    .filter(p -> !p.getQualified())
+                    .collect(Collectors.toList());
+
+            // 步骤7：晋级区按加权分数排序
+            qualifiedProjects.sort((a, b) -> {
                 int cmp = Double.compare(b.getWeightedScore(), a.getWeightedScore());
                 if (cmp != 0) return cmp;
                 // 分数相同时，按投资额排序
@@ -533,24 +650,145 @@ public class HackathonService {
                 return teamNumA.compareTo(teamNumB);
             });
 
-            log.debug("投资期排名计算完成，使用加权算法：UV排名*40% + 投资额排名*60%");
-        } else {
-            // 其他阶段：UV排名
-            projects.sort((a, b) -> {
+            // 步骤8：非晋级区按UV排序
+            nonQualifiedProjects.sort((a, b) -> {
                 int cmp = Long.compare(b.getUv(), a.getUv());
                 if (cmp != 0) return cmp;
-                // 处理teamNumber为null的情况
                 String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
                 String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
                 return teamNumA.compareTo(teamNumB);
             });
+
+            // 步骤9：设置排名
+            for (int i = 0; i < qualifiedProjects.size(); i++) {
+                qualifiedProjects.get(i).setRank(i + 1);
+            }
+            for (int i = 0; i < nonQualifiedProjects.size(); i++) {
+                nonQualifiedProjects.get(i).setRank(i + 1);
+            }
+
+            // 步骤10：合并列表
+            projects.clear();
+            projects.addAll(qualifiedProjects);
+            projects.addAll(nonQualifiedProjects);
+
+            log.debug("投资期排名计算完成，使用加权算法：UV排名分数*40% + 投资额排名分数*60%");
+        }
+    }
+
+    private QualifiedProjectsConfig loadQualifiedProjectsConfig() {
+        try {
+            String tableId = feishuConfig.getConfigTableId();
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+
+            for (Map<String, Object> record : records) {
+                Object key = record.get("配置项");
+                if (key != null && "qualified_project_ids".equals(key.toString())) {
+                    String recordId = (String) record.get("record_id");
+                    Object valueObj = record.get("配置值");
+                    String idsStr = valueObj != null ? valueObj.toString() : null;
+
+                    if (idsStr != null && !idsStr.trim().isEmpty()) {
+                        Set<Long> ids = Arrays.stream(idsStr.split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .map(Long::parseLong)
+                                .collect(Collectors.toCollection(LinkedHashSet::new));
+                        return new QualifiedProjectsConfig(ids, recordId);
+                    }
+
+                    return new QualifiedProjectsConfig(new LinkedHashSet<>(), recordId);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取晋级项目配置失败", e);
+        }
+        return new QualifiedProjectsConfig(new LinkedHashSet<>(), null);
+    }
+
+    private List<Long> resolveQualifiedProjectIds(List<Project> projects, int qualifiedCount) {
+        QualifiedProjectsConfig config = loadQualifiedProjectsConfig();
+        if (!config.getProjectIds().isEmpty()) {
+            return new ArrayList<>(config.getProjectIds());
         }
 
-        // 设置排名和晋级状态
-        int qualifiedCount = hackathonProperties.getQualifiedCount();
-        for (int i = 0; i < projects.size(); i++) {
-            projects.get(i).setRank(i + 1);
-            projects.get(i).setQualified(i < qualifiedCount);
+        List<Long> computed = selectTopProjectsByUv(projects, qualifiedCount).stream()
+                .map(Project::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (!computed.isEmpty()) {
+            persistQualifiedProjects(computed, config.getRecordId());
+            log.info("未配置晋级名单，按UV锁定前{}名并写入配置", computed.size());
+        }
+
+        return computed;
+    }
+
+    private List<Project> selectTopProjectsByUv(List<Project> projects, int count) {
+        if (projects == null || projects.isEmpty() || count <= 0) {
+            return Collections.emptyList();
+        }
+
+        return projects.stream()
+                .sorted((a, b) -> {
+                    int cmp = Long.compare(
+                            Optional.ofNullable(b.getUv()).orElse(0L),
+                            Optional.ofNullable(a.getUv()).orElse(0L)
+                    );
+                    if (cmp != 0) {
+                        return cmp;
+                    }
+                    String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
+                    String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
+                    return teamNumA.compareTo(teamNumB);
+                })
+                .limit(count)
+                .collect(Collectors.toList());
+    }
+
+    private void persistQualifiedProjects(List<Long> qualifiedIds, String existingRecordId) {
+        if (qualifiedIds == null || qualifiedIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            String idsStr = qualifiedIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            if (idsStr.isEmpty()) {
+                return;
+            }
+
+            String tableId = feishuConfig.getConfigTableId();
+            Map<String, Object> fields = new HashMap<>();
+            fields.put("配置值", idsStr);
+
+            if (existingRecordId != null && !existingRecordId.isEmpty()) {
+                feishuService.updateRecord(tableId, existingRecordId, fields);
+            } else {
+                fields.put("配置项", "qualified_project_ids");
+                feishuService.createRecord(tableId, fields);
+            }
+        } catch (Exception e) {
+            log.warn("写入晋级项目配置失败", e);
+        }
+    }
+
+    private void clearQualifiedProjectsConfig() {
+        try {
+            QualifiedProjectsConfig config = loadQualifiedProjectsConfig();
+            if (config.getRecordId() == null || config.getProjectIds().isEmpty()) {
+                return;
+            }
+
+            String tableId = feishuConfig.getConfigTableId();
+            Map<String, Object> fields = new HashMap<>();
+            fields.put("配置值", "");
+            feishuService.updateRecord(tableId, config.getRecordId(), fields);
+        } catch (Exception e) {
+            log.warn("清空晋级项目配置失败", e);
         }
     }
 
@@ -577,6 +815,24 @@ public class HackathonService {
             }
             return (target.isAfter(start) || target.isEqual(start))
                     && (target.isBefore(end) || target.isEqual(end));
+        }
+    }
+
+    private static class QualifiedProjectsConfig {
+        private final Set<Long> projectIds;
+        private final String recordId;
+
+        QualifiedProjectsConfig(Set<Long> projectIds, String recordId) {
+            this.projectIds = projectIds;
+            this.recordId = recordId;
+        }
+
+        Set<Long> getProjectIds() {
+            return projectIds;
+        }
+
+        String getRecordId() {
+            return recordId;
         }
     }
 
