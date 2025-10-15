@@ -3,9 +3,11 @@ package com.gdtech.hackathon.service;
 import com.gdtech.hackathon.config.FeishuConfig;
 import com.gdtech.hackathon.config.HackathonProperties;
 import com.gdtech.hackathon.model.*;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -27,15 +29,29 @@ public class HackathonService {
     private final FeishuService feishuService;
     private final FeishuConfig feishuConfig;
     private final HackathonProperties hackathonProperties;
+    private final ApplicationContext applicationContext;
+    private HackathonService self;
 
     // 内存缓存投资记录，避免并发问题（生产环境应使用Redis）
     private final Map<String, Integer> investorRemainingAmount = new ConcurrentHashMap<>();
     public HackathonService(FeishuService feishuService,
                             FeishuConfig feishuConfig,
-                            HackathonProperties hackathonProperties) {
+                            HackathonProperties hackathonProperties,
+                            ApplicationContext applicationContext) {
         this.feishuService = feishuService;
         this.feishuConfig = feishuConfig;
         this.hackathonProperties = hackathonProperties;
+        this.applicationContext = applicationContext;
+    }
+
+    @PostConstruct
+    private void initSelfProxy() {
+        try {
+            this.self = applicationContext.getBean(HackathonService.class);
+        } catch (Exception ex) {
+            log.warn("初始化HackathonService代理失败，将回退到直接调用: {}", ex.getMessage());
+            this.self = this;
+        }
     }
 
     /**
@@ -215,7 +231,14 @@ public class HackathonService {
      * 根据ID获取项目
      */
     public Project getProjectById(Long projectId) {
-        return getAllProjects().stream()
+        List<Project> projectList;
+        if (self != null && self != this) {
+            projectList = self.getAllProjects();
+        } else {
+            projectList = getAllProjects();
+        }
+
+        return projectList.stream()
                 .filter(p -> p.getId().equals(projectId))
                 .findFirst()
                 .orElse(null);
