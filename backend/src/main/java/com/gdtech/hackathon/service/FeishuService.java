@@ -100,7 +100,7 @@ public class FeishuService {
                     uri += "&page_token=" + pageToken;
                 }
                 if (filter != null) {
-                    uri += "&filter=" + filter;
+                    uri += "&filter=" + java.net.URLEncoder.encode(filter, java.nio.charset.StandardCharsets.UTF_8);
                 }
 
                 String response = webClient.get()

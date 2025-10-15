@@ -231,6 +231,19 @@ public class HackathonService {
      * 根据ID获取项目
      */
     public Project getProjectById(Long projectId) {
+        try {
+            String tableId = feishuConfig.getProjectsTableId();
+            Map<String, Object> record = findRecordByField(tableId, "项目ID", projectId);
+            if (record != null && !record.isEmpty()) {
+                Project project = convertToProject(record);
+                Set<Long> qualifiedIds = new LinkedHashSet<>(loadQualifiedProjectsConfig().getProjectIds());
+                project.setQualified(qualifiedIds.contains(project.getId()));
+                return project;
+            }
+        } catch (Exception e) {
+            log.warn("通过过滤查询项目{}失败，回退到缓存数据", projectId, e);
+        }
+
         List<Project> projectList;
         if (self != null && self != this) {
             projectList = self.getAllProjects();
@@ -250,18 +263,18 @@ public class HackathonService {
     public Investor login(String username, String password) {
         try {
             String tableId = feishuConfig.getInvestorsTableId();
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            Map<String, Object> record = findRecordByField(tableId, "账号", username);
 
-            for (Map<String, Object> record : records) {
-                String recordUsername = (String) record.get("账号");
+            if (record != null && !record.isEmpty()) {
                 String recordPassword = (String) record.get("初始密码");
                 Boolean enabled = (Boolean) record.getOrDefault("是否启用", true);
 
-                if (username.equals(recordUsername) && password.equals(recordPassword) && enabled) {
+                if (password.equals(recordPassword) && Boolean.TRUE.equals(enabled)) {
                     Investor investor = convertToInvestor(record);
                     enrichInvestorWithHistory(investor);
                     return investor;
                 }
+                return null;
             }
 
             return null; // 登录失败
@@ -378,17 +391,14 @@ public class HackathonService {
     private Investor getInvestorByUsername(String username) {
         try {
             String tableId = feishuConfig.getInvestorsTableId();
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
-
-            return records.stream()
-                    .filter(r -> username.equals(r.get("账号")))
-                    .map(this::convertToInvestor)
-                    .findFirst()
-                    .orElse(null);
+            Map<String, Object> record = findRecordByField(tableId, "账号", username);
+            if (record != null && !record.isEmpty()) {
+                return convertToInvestor(record);
+            }
         } catch (Exception e) {
             log.error("获取投资人失败", e);
-            return null;
         }
+        return null;
     }
 
     private void enrichProjectsWithInvestments(List<Project> projects) {
@@ -813,6 +823,42 @@ public class HackathonService {
         } catch (Exception e) {
             log.warn("清空晋级项目配置失败", e);
         }
+    }
+
+    private Map<String, Object> findRecordByField(String tableId, String fieldName, Object value) {
+        try {
+            String filter = buildFilterExpression(fieldName, value);
+            if (filter == null) {
+                return null;
+            }
+            List<Map<String, Object>> records = feishuService.listRecords(tableId, filter, 10);
+            if (!records.isEmpty()) {
+                return records.get(0);
+            }
+        } catch (Exception e) {
+            log.warn("根据字段 {}={} 查询记录失败", fieldName, value, e);
+        }
+        return null;
+    }
+
+    private String buildFilterExpression(String fieldName, Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value instanceof Number) {
+            return String.format("CurrentValue.[%s] == %s", fieldName, value);
+        }
+
+        String escaped = escapeFilterValue(value.toString());
+        return String.format("CurrentValue.[%s] == \"%s\"", fieldName, escaped);
+    }
+
+    private String escapeFilterValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static class StageWindow {
