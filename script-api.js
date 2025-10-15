@@ -8,6 +8,7 @@ let currentUser = null;
 let currentStage = null;
 let projects = [];
 let stageConfig = {};
+let isSubmittingInvestment = false;
 
 // ===== Loading辅助函数 =====
 
@@ -28,6 +29,29 @@ function hideLoading() {
     const loadingEl = document.getElementById('globalLoading');
     if (loadingEl) {
         loadingEl.style.display = 'none';
+    }
+}
+
+/**
+ * 切换投资按钮状态，避免重复提交
+ */
+function setInvestButtonState(isLoading) {
+    const submitBtn = document.getElementById('investSubmitBtn');
+    if (!submitBtn) return;
+
+    if (isLoading) {
+        if (!submitBtn.dataset.originalHtml) {
+            submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+        }
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            确认中...
+        `;
+    } else {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = submitBtn.dataset.originalHtml || '确认投资';
+        delete submitBtn.dataset.originalHtml;
     }
 }
 
@@ -471,6 +495,7 @@ function showInvestModal(projectId) {
     document.getElementById('remainingAmount').textContent = currentUser.remainingAmount;
     document.getElementById('investAmount').max = currentUser.remainingAmount;
     document.getElementById('investForm').dataset.projectId = projectId;
+    setInvestButtonState(false);
 
     const modal = new bootstrap.Modal(document.getElementById('investModal'));
     modal.show();
@@ -482,31 +507,66 @@ function showInvestModal(projectId) {
 async function handleInvestment(e) {
     e.preventDefault();
 
-    const projectId = parseInt(document.getElementById('investForm').dataset.projectId);
-    const amount = parseInt(document.getElementById('investAmount').value);
+    if (isSubmittingInvestment) {
+        return;
+    }
+
+    const investForm = document.getElementById('investForm');
+    const projectId = parseInt(investForm.dataset.projectId, 10);
+    const amount = parseInt(document.getElementById('investAmount').value, 10);
+
+    if (!projectId) {
+        showToast('未找到项目，请重试', 'error');
+        return;
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+        showToast('请输入有效的投资金额', 'error');
+        return;
+    }
 
     if (amount > currentUser.remainingAmount) {
         showToast('投资金额超过剩余额度！', 'error');
         return;
     }
 
-    const result = await invest(currentUser.username, projectId, amount);
+    isSubmittingInvestment = true;
+    setInvestButtonState(true);
 
-    if (result.success) {
-        showToast(`成功投资${amount}万元！`, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('investModal')).hide();
+    try {
+        const result = await invest(currentUser.username, projectId, amount);
 
-        // 更新当前用户剩余额度
-        currentUser.remainingAmount -= amount;
+        if (result.success) {
+            showToast(`成功投资${amount}万元！`, 'success');
 
-        // 重新加载项目列表
-        await fetchProjects();
-        renderProjects();
+            const modalElement = document.getElementById('investModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
 
-        // 重置表单
-        document.getElementById('investForm').reset();
-    } else {
-        showToast(result.message || '投资失败', 'error');
+            // 同步刷新投资人信息和项目数据
+            currentUser.remainingAmount -= amount;
+            currentUser.investedAmount = (currentUser.investedAmount || 0) + amount;
+
+            const investor = await fetchInvestorInfo(currentUser.username);
+            if (investor) {
+                currentUser = investor;
+            }
+
+            await fetchProjects();
+            renderProjects();
+
+            investForm.reset();
+        } else {
+            showToast(result.message || '投资失败', 'error');
+        }
+    } catch (error) {
+        console.error('投资提交异常:', error);
+        showToast('投资失败，请稍后再试', 'error');
+    } finally {
+        isSubmittingInvestment = false;
+        setInvestButtonState(false);
     }
 }
 
