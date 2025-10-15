@@ -195,7 +195,14 @@ function updateStageInfo() {
 function renderProjects() {
     const sortedProjects = sortProjects();
     const qualifiedProjects = sortedProjects.slice(0, 15);
-    const nonQualifiedProjects = sortedProjects.slice(15);
+    let nonQualifiedProjects = sortedProjects.slice(15);
+    
+    if (currentStage === 'investment' || currentStage === 'ended') {
+        nonQualifiedProjects = nonQualifiedProjects.sort((a, b) => {
+            if (b.uv !== a.uv) return b.uv - a.uv;
+            return parseInt(a.teamNumber) - parseInt(b.teamNumber);
+        });
+    }
     
     // 显示/隐藏晋级区
     const qualifiedSection = document.getElementById('qualifiedSection');
@@ -235,10 +242,17 @@ function sortProjects() {
 // 渲染项目列表
 function renderProjectList(containerId, projectList, isQualified) {
     const container = document.getElementById(containerId);
+    const sortedList = isQualified
+        ? [...projectList]
+        : [...projectList].sort((a, b) => {
+            if (b.uv !== a.uv) return b.uv - a.uv;
+            return parseInt(a.teamNumber) - parseInt(b.teamNumber);
+        });
     
-    container.innerHTML = projectList.map((project, index) => {
+    container.innerHTML = sortedList.map((project, index) => {
         const rank = isQualified ? index + 1 : index + 16;
         const rankClass = rank <= 3 ? 'top-3' : '';
+        const canInvest = isQualified && stageConfig[currentStage].canInvest;
         
         return `
             <div class="project-card position-relative fade-in" style="animation-delay: ${index * 0.1}s">
@@ -298,10 +312,9 @@ function renderProjectList(containerId, projectList, isQualified) {
                             <button class="btn btn-visit" onclick="window.open('${project.url}', '_blank')">
                                 <i class="fas fa-external-link-alt me-2"></i>访问
                             </button>
-                            ${isQualified ? `
-                                <button class="btn btn-invest ${!stageConfig[currentStage].canInvest ? 'disabled' : ''}" 
-                                        onclick="showInvestModal(${project.id})"
-                                        ${!stageConfig[currentStage].canInvest ? 'disabled' : ''}>
+                            ${isQualified && canInvest ? `
+                                <button class="btn btn-invest" 
+                                        onclick="showInvestModal(${project.id})">
                                     <i class="fas fa-coins me-2"></i>投资
                                 </button>
                             ` : ''}

@@ -334,9 +334,17 @@ function renderProjects() {
 function renderProjectList(containerId, projectList, isQualified) {
     const container = document.getElementById(containerId);
 
-    container.innerHTML = projectList.map((project, index) => {
+    const sortedList = isQualified
+        ? [...projectList]
+        : [...projectList].sort((a, b) => {
+            if (b.uv !== a.uv) return b.uv - a.uv;
+            return (a.teamNumber || '999').localeCompare(b.teamNumber || '999');
+        });
+
+    container.innerHTML = sortedList.map((project, index) => {
         const rankClass = project.rank <= 3 ? 'top-3' : '';
         const canInvest = isQualified && stageConfig[currentStage]?.canInvest;
+        const showInvestButton = isQualified && canInvest;
 
         return `
             <div class="project-card position-relative fade-in" style="animation-delay: ${index * 0.1}s">
@@ -395,10 +403,9 @@ function renderProjectList(containerId, projectList, isQualified) {
                             <button class="btn btn-visit" onclick="window.open('${project.url}', '_blank')">
                                 <i class="fas fa-external-link-alt me-2"></i>访问
                             </button>
-                            ${isQualified ? `
-                                <button class="btn btn-invest ${!canInvest ? 'disabled' : ''}"
-                                        onclick="showInvestModal(${project.id})"
-                                        ${!canInvest ? 'disabled' : ''}>
+                            ${showInvestButton ? `
+                                <button class="btn btn-invest"
+                                        onclick="showInvestModal(${project.id})">
                                     <i class="fas fa-coins me-2"></i>投资
                                 </button>
                             ` : ''}
