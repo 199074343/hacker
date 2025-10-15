@@ -4,6 +4,8 @@ import com.gdtech.hackathon.config.FeishuConfig;
 import com.gdtech.hackathon.config.HackathonProperties;
 import com.gdtech.hackathon.model.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -43,32 +45,27 @@ public class HackathonService {
      * 1. 优先使用飞书配置表的配置值（方便产品验证）
      * 2. 配置值为空时，根据当前时间自动判断阶段
      * 3. 时间早于海选期，视为海选期
+     * 缓存1小时
      */
+    @Cacheable(value = "currentStage", unless = "#result == null")
     public CompetitionStage getCurrentStage() {
         try {
             // 1. 读取飞书配置表
             String tableId = feishuConfig.getConfigTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
 
-            log.info("读取飞书配置表记录数: {}", records.size());
-
             for (Map<String, Object> record : records) {
-                String configKey = (String) record.get("配置项");
-                log.info("配置记录: 配置项={}, 配置值={}", configKey, record.get("配置值"));
-
-                if ("current_stage".equals(configKey)) {
+                if ("current_stage".equals(record.get("配置项"))) {
                     String stageCode = (String) record.get("配置值");
 
                     // 2. 如果配置值不为空，使用配置值（方便产品验证）
                     if (stageCode != null && !stageCode.trim().isEmpty()) {
-                        log.info("使用飞书配置的阶段: {}", stageCode);
-                        CompetitionStage stage = CompetitionStage.fromCode(stageCode);
-                        log.info("解析后的阶段枚举: {}, 是否可投资: {}", stage.getCode(), stage.canInvest());
-                        return stage;
+                        log.debug("使用飞书配置的阶段: {}", stageCode);
+                        return CompetitionStage.fromCode(stageCode);
                     }
 
                     // 3. 配置值为空，根据当前时间自动判断
-                    log.info("配置值为空，根据当前时间自动判断阶段");
+                    log.debug("配置值为空，根据当前时间自动判断阶段");
                     return determineStageByTime();
                 }
             }
@@ -79,9 +76,7 @@ public class HackathonService {
         }
 
         // 4. 读取失败，根据时间判断
-        CompetitionStage stage = determineStageByTime();
-        log.info("时间判断结果: {}, 是否可投资: {}", stage.getCode(), stage.canInvest());
-        return stage;
+        return determineStageByTime();
     }
 
     /**
@@ -98,28 +93,23 @@ public class HackathonService {
         // 时间早于海选期开始
         if (selectionWindow != null && selectionWindow.getStart() != null
                 && now.isBefore(selectionWindow.getStart())) {
-            log.info("当前时间早于海选期开始时间，视为海选期（活动未开始）");
             return CompetitionStage.SELECTION;
         }
 
         if (selectionWindow != null && selectionWindow.contains(now)) {
-            log.info("当前时间处于海选期");
             return CompetitionStage.SELECTION;
         }
 
         if (lockWindow != null && lockWindow.contains(now)) {
-            log.info("当前时间处于锁定期");
             return CompetitionStage.LOCK;
         }
 
         if (investmentWindow != null && investmentWindow.contains(now)) {
-            log.info("当前时间处于投资期");
             return CompetitionStage.INVESTMENT;
         }
 
         if (investmentWindow != null && investmentWindow.getEnd() != null
                 && now.isAfter(investmentWindow.getEnd())) {
-            log.info("当前时间晚于结束期，视为海选期（活动已过期）");
             return CompetitionStage.SELECTION;
         }
 
@@ -189,43 +179,38 @@ public class HackathonService {
 
     /**
      * 获取所有项目列表（带排名）
+     * 缓存1小时
      */
+    @Cacheable(value = "projects", unless = "#result == null || #result.isEmpty()")
     public List<Project> getAllProjects() {
-        long startTime = System.currentTimeMillis();
         try {
-            log.info("🚀 开始获取项目列表...");
-
-            // 步骤1：查询项目表
-            long step1Start = System.currentTimeMillis();
             String tableId = feishuConfig.getProjectsTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
-            long step1End = System.currentTimeMillis();
-            log.info("  ✅ 步骤1: 查询项目表完成，耗时: {}ms，记录数: {}", step1End - step1Start, records.size());
 
             List<Project> projects = records.stream()
                     .map(this::convertToProject)
                     .filter(Project::getEnabled)
                     .collect(Collectors.toList());
 
-            // 步骤2：获取投资记录并汇总
-            long step2Start = System.currentTimeMillis();
+            // 获取投资记录并汇总
             enrichProjectsWithInvestments(projects);
-            long step2End = System.currentTimeMillis();
-            log.info("  ✅ 步骤2: 加载投资记录完成，耗时: {}ms", step2End - step2Start);
 
-            // 步骤3：计算排名
-            long step3Start = System.currentTimeMillis();
+            // 计算排名
             calculateRankings(projects);
-            long step3End = System.currentTimeMillis();
-            log.info("  ✅ 步骤3: 计算排名完成，耗时: {}ms", step3End - step3Start);
 
-            long totalTime = System.currentTimeMillis() - startTime;
-            log.info("✨ 获取项目列表总耗时: {}ms", totalTime);
             return projects;
         } catch (Exception e) {
             log.error("获取项目列表失败", e);
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * 清除项目列表缓存
+     */
+    @CacheEvict(value = "projects", allEntries = true)
+    public void evictProjectsCache() {
+        log.info("清除项目列表缓存");
     }
 
     /**
@@ -267,6 +252,7 @@ public class HackathonService {
 
     /**
      * 执行投资
+     * 投资成功后清除项目列表缓存
      */
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
@@ -313,6 +299,9 @@ public class HackathonService {
 
             // 更新内存中的剩余额度
             investorRemainingAmount.put(investorUsername, remaining - amount);
+
+            // 清除项目列表缓存，下次查询会重新计算排名
+            evictProjectsCache();
 
             log.info("投资成功: {} 投资 {} 万元给项目 {}", investorUsername, amount, projectId);
             return true;
@@ -521,8 +510,6 @@ public class HackathonService {
             }
 
             // 步骤3：计算加权分数并设置到项目
-            log.info("================== 投资期排名计算详情 ==================");
-            log.info("总队伍数: {}", totalTeams);
             projects.forEach(p -> {
                 int uvRank = uvRankMap.get(p.getId());
                 int investRank = investmentRankMap.get(p.getId());
@@ -531,13 +518,6 @@ public class HackathonService {
                 // 加权分数 = UV排名分数*40% + 投资额排名分数*60%
                 double weightedScore = uvScore * 0.4 + investScore * 0.6;
                 p.setWeightedScore(weightedScore);
-
-                // 打印详细排名信息
-                log.info("项目ID: {}, 名称: {}, 队伍编号: {}", p.getId(), p.getName(), p.getTeamNumber());
-                log.info("  UV: {}, UV排名: {}, UV排名分数: {}", p.getUv(), uvRank, String.format("%.2f", uvScore));
-                log.info("  投资额: {}万元, 投资额排名: {}, 投资额排名分数: {}", p.getInvestment(), investRank, String.format("%.2f", investScore));
-                log.info("  最终加权分数: {} ({}*0.4 + {}*0.6)", String.format("%.2f", weightedScore), String.format("%.2f", uvScore), String.format("%.2f", investScore));
-                log.info("---");
             });
 
             // 步骤4：按加权分数排序
@@ -553,16 +533,7 @@ public class HackathonService {
                 return teamNumA.compareTo(teamNumB);
             });
 
-            // 打印最终排名结果
-            log.info("================== 最终排名结果 ==================");
-            for (int i = 0; i < Math.min(projects.size(), 20); i++) {
-                Project p = projects.get(i);
-                log.info("排名#{}: {} (队伍#{}) - 加权分数: {}, UV: {}, 投资: {}万元",
-                        i + 1, p.getName(), p.getTeamNumber(),
-                        String.format("%.2f", p.getWeightedScore()),
-                        p.getUv(), p.getInvestment());
-            }
-            log.info("投资期排名算法：基于排名分数加权 (UV排名*40% + 投资额排名*60%)");
+            log.debug("投资期排名计算完成，使用加权算法：UV排名*40% + 投资额排名*60%");
         } else {
             // 其他阶段：UV排名
             projects.sort((a, b) -> {

@@ -20,13 +20,13 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager(
                 "feishuToken",    // 飞书token缓存5分钟
-                "currentStage",   // 当前阶段缓存5分钟
-                "projects"        // 项目列表缓存5分钟
+                "currentStage",   // 当前阶段缓存1小时
+                "projects"        // 项目列表缓存1小时
         );
 
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(500)
-                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .expireAfterWrite(60, TimeUnit.MINUTES)  // 缓存1小时
                 .recordStats());
 
         return cacheManager;

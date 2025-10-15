@@ -84,7 +84,6 @@ public class FeishuService {
      * @return 记录列表
      */
     public List<Map<String, Object>> listRecords(String tableId, String filter, int pageSize) {
-        long startTime = System.currentTimeMillis();
         try {
             String token = getTenantAccessToken();
             String appToken = feishuConfig.getBase().getAppToken();
@@ -92,10 +91,8 @@ public class FeishuService {
             List<Map<String, Object>> allRecords = new ArrayList<>();
             String pageToken = null;
             boolean hasMore = true;
-            int requestCount = 0;
 
             while (hasMore) {
-                requestCount++;
                 String uri = String.format("/bitable/v1/apps/%s/tables/%s/records?page_size=%d",
                         appToken, tableId, pageSize);
 
@@ -146,10 +143,7 @@ public class FeishuService {
                 }
             }
 
-            long endTime = System.currentTimeMillis();
-            long duration = endTime - startTime;
-            log.info("⏱️ 飞书API查询性能 - 表ID: {}, 记录数: {}, 请求次数: {}, 耗时: {}ms",
-                    tableId, allRecords.size(), requestCount, duration);
+            log.debug("从表 {} 查询到 {} 条记录", tableId, allRecords.size());
             return allRecords;
         } catch (Exception e) {
             log.error("查询飞书表格记录异常", e);
