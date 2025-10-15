@@ -9,6 +9,28 @@ let currentStage = null;
 let projects = [];
 let stageConfig = {};
 
+// ===== Loading辅助函数 =====
+
+/**
+ * 显示全局loading效果
+ */
+function showLoading() {
+    const loadingEl = document.getElementById('globalLoading');
+    if (loadingEl) {
+        loadingEl.style.display = 'flex';
+    }
+}
+
+/**
+ * 隐藏全局loading效果
+ */
+function hideLoading() {
+    const loadingEl = document.getElementById('globalLoading');
+    if (loadingEl) {
+        loadingEl.style.display = 'none';
+    }
+}
+
 // ===== API调用函数 =====
 
 /**
@@ -16,6 +38,7 @@ let stageConfig = {};
  */
 async function fetchCurrentStage() {
     try {
+        showLoading();
         const response = await fetch(`${API_BASE_URL}/stage`);
         const result = await response.json();
 
@@ -35,6 +58,8 @@ async function fetchCurrentStage() {
     } catch (error) {
         console.error('获取比赛阶段异常:', error);
         return null;
+    } finally {
+        hideLoading();
     }
 }
 
@@ -43,6 +68,7 @@ async function fetchCurrentStage() {
  */
 async function fetchProjects() {
     try {
+        showLoading();
         const response = await fetch(`${API_BASE_URL}/projects`);
         const result = await response.json();
 
@@ -62,6 +88,8 @@ async function fetchProjects() {
     } catch (error) {
         console.error('获取项目列表异常:', error);
         return [];
+    } finally {
+        hideLoading();
     }
 }
 
@@ -123,6 +151,7 @@ function printRankingDetails(projects) {
  */
 async function login(username, password) {
     try {
+        showLoading();
         const response = await fetch(`${API_BASE_URL}/login`, {
             method: 'POST',
             headers: {
@@ -141,6 +170,8 @@ async function login(username, password) {
     } catch (error) {
         console.error('登录异常:', error);
         return null;
+    } finally {
+        hideLoading();
     }
 }
 
@@ -149,6 +180,7 @@ async function login(username, password) {
  */
 async function fetchInvestorInfo(username) {
     try {
+        showLoading();
         const response = await fetch(`${API_BASE_URL}/investor/${username}`);
         const result = await response.json();
 
@@ -161,6 +193,8 @@ async function fetchInvestorInfo(username) {
     } catch (error) {
         console.error('获取投资人信息异常:', error);
         return null;
+    } finally {
+        hideLoading();
     }
 }
 
@@ -169,6 +203,7 @@ async function fetchInvestorInfo(username) {
  */
 async function invest(investorUsername, projectId, amount) {
     try {
+        showLoading();
         const response = await fetch(`${API_BASE_URL}/invest`, {
             method: 'POST',
             headers: {
@@ -191,6 +226,8 @@ async function invest(investorUsername, projectId, amount) {
     } catch (error) {
         console.error('投资异常:', error);
         return { success: false, message: '投资失败: ' + error.message };
+    } finally {
+        hideLoading();
     }
 }
 
