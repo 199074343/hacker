@@ -910,11 +910,11 @@ public class HackathonService {
         }
 
         if (value instanceof Number) {
-            return String.format("CurrentValue.[%s] == %s", fieldName, value);
+            return String.format("CurrentValue.[%s] = %s", fieldName, value);
         }
 
         String escaped = escapeFilterValue(value.toString());
-        return String.format("CurrentValue.[%s] == \"%s\"", fieldName, escaped);
+        return String.format("CurrentValue.[%s] = \"%s\"", fieldName, escaped);
     }
 
     private String escapeFilterValue(String value) {
