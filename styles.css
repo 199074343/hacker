@@ -292,6 +292,10 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    overflow: hidden;
 }
 
 .investor-avatar:hover {
