@@ -191,21 +191,36 @@ public class HackathonService {
      * 获取所有项目列表（带排名）
      */
     public List<Project> getAllProjects() {
+        long startTime = System.currentTimeMillis();
         try {
+            log.info("🚀 开始获取项目列表...");
+
+            // 步骤1：查询项目表
+            long step1Start = System.currentTimeMillis();
             String tableId = feishuConfig.getProjectsTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            long step1End = System.currentTimeMillis();
+            log.info("  ✅ 步骤1: 查询项目表完成，耗时: {}ms，记录数: {}", step1End - step1Start, records.size());
 
             List<Project> projects = records.stream()
                     .map(this::convertToProject)
                     .filter(Project::getEnabled)
                     .collect(Collectors.toList());
 
-            // 获取投资记录并汇总
+            // 步骤2：获取投资记录并汇总
+            long step2Start = System.currentTimeMillis();
             enrichProjectsWithInvestments(projects);
+            long step2End = System.currentTimeMillis();
+            log.info("  ✅ 步骤2: 加载投资记录完成，耗时: {}ms", step2End - step2Start);
 
-            // 计算排名
+            // 步骤3：计算排名
+            long step3Start = System.currentTimeMillis();
             calculateRankings(projects);
+            long step3End = System.currentTimeMillis();
+            log.info("  ✅ 步骤3: 计算排名完成，耗时: {}ms", step3End - step3Start);
 
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("✨ 获取项目列表总耗时: {}ms", totalTime);
             return projects;
         } catch (Exception e) {
             log.error("获取项目列表失败", e);
