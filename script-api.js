@@ -316,7 +316,7 @@ function renderProjects() {
     const qualifiedSection = document.getElementById('qualifiedSection');
     const nonQualifiedTitle = document.getElementById('nonQualifiedTitle');
 
-    if (currentStage === 'lock' || currentStage === 'investment' || currentStage === 'ended') {
+    if (currentStage === 'selection' || currentStage === 'lock' || currentStage === 'investment' || currentStage === 'ended') {
         qualifiedSection.style.display = 'block';
         nonQualifiedTitle.innerHTML = '<i class="fas fa-list me-2"></i>非晋级区';
         renderProjectList('qualifiedProjects', qualifiedProjects, true);
