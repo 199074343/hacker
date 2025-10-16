@@ -301,82 +301,96 @@ public class HackathonService {
 
     /**
      * 投资人登录
+     * 优化：并发查询投资人信息和投资历史，减少API调用耗时
      */
     public Investor login(String username, String password) {
         try {
-            String tableId = feishuConfig.getInvestorsTableId();
-            Map<String, Object> record = findRecordByField(tableId, "账号", username);
+            long startTime = System.currentTimeMillis();
 
-            if (record != null && !record.isEmpty()) {
-                String recordPassword = (String) record.get("初始密码");
-                Boolean enabled = (Boolean) record.getOrDefault("是否启用", true);
+            String investorsTableId = feishuConfig.getInvestorsTableId();
+            String investmentsTableId = feishuConfig.getInvestmentsTableId();
 
-                if (password.equals(recordPassword) && Boolean.TRUE.equals(enabled)) {
-                    Investor investor = convertToInvestor(record);
-                    enrichInvestorWithHistory(investor);
-                    return investor;
-                }
-                return null;
-            }
+            // 优化：并发获取投资人信息和投资历史
+            CompletableFuture<List<Map<String, Object>>> investorsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(investorsTableId), apiExecutor);
 
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
-            for (Map<String, Object> fallbackRecord : records) {
-                if (fieldValueEquals(fallbackRecord.get("账号"), username)) {
-                    String recordPassword = (String) fallbackRecord.get("初始密码");
-                    Boolean enabled = (Boolean) fallbackRecord.getOrDefault("是否启用", true);
+            CompletableFuture<List<Map<String, Object>>> investmentsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(investmentsTableId), apiExecutor);
+
+            // 等待两个API调用完成
+            CompletableFuture.allOf(investorsFuture, investmentsFuture).join();
+
+            // 获取结果
+            List<Map<String, Object>> investorRecords = investorsFuture.get();
+            List<Map<String, Object>> investmentRecords = investmentsFuture.get();
+
+            long fetchTime = System.currentTimeMillis() - startTime;
+            log.debug("并发获取投资人和投资记录耗时: {}ms", fetchTime);
+
+            // 查找匹配的投资人记录
+            for (Map<String, Object> record : investorRecords) {
+                if (fieldValueEquals(record.get("账号"), username)) {
+                    String recordPassword = (String) record.get("初始密码");
+                    Boolean enabled = (Boolean) record.getOrDefault("是否启用", true);
+
                     if (password.equals(recordPassword) && Boolean.TRUE.equals(enabled)) {
-                        Investor investor = convertToInvestor(fallbackRecord);
-                        enrichInvestorWithHistory(investor);
+                        Investor investor = convertToInvestor(record);
+                        // 使用已获取的投资记录数据填充历史
+                        enrichInvestorWithHistoryFromData(investor, investmentRecords);
+
+                        long totalTime = System.currentTimeMillis() - startTime;
+                        log.info("登录成功: {}, 总耗时: {}ms (并发查询耗时: {}ms)",
+                                username, totalTime, fetchTime);
                         return investor;
                     }
-                    return null;
+                    return null; // 密码错误或账号未启用
                 }
             }
 
-            return null; // 登录失败
+            return null; // 账号不存在
         } catch (Exception e) {
             log.error("投资人登录失败", e);
-            try {
-                String tableId = feishuConfig.getInvestorsTableId();
-                List<Map<String, Object>> records = feishuService.listRecords(tableId);
-                for (Map<String, Object> fallbackRecord : records) {
-                    if (fieldValueEquals(fallbackRecord.get("账号"), username)) {
-                        String recordPassword = (String) fallbackRecord.get("初始密码");
-                        Boolean enabled = (Boolean) fallbackRecord.getOrDefault("是否启用", true);
-                        if (password.equals(recordPassword) && Boolean.TRUE.equals(enabled)) {
-                            Investor investor = convertToInvestor(fallbackRecord);
-                            enrichInvestorWithHistory(investor);
-                            return investor;
-                        }
-                        return null;
-                    }
-                }
-            } catch (Exception ex) {
-                log.error("回退登录校验失败", ex);
-            }
             return null;
         }
     }
 
     /**
      * 执行投资
+     * 优化：并发获取投资人和项目信息，减少API调用耗时
      */
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
+            long startTime = System.currentTimeMillis();
+
             // 优化：跳过阶段检查以减少飞书API调用（已在前端控制）
             // CompetitionStage stage = getCurrentStage();
             // if (!stage.canInvest()) {
             //     throw new IllegalStateException("当前阶段不可投资，请见大赛规则");
             // }
 
-            // 获取投资人信息（1-2次飞书API）
-            Investor investor = getInvestorByUsername(investorUsername);
+            // 优化：并发获取投资人信息和项目信息
+            CompletableFuture<Investor> investorFuture = CompletableFuture.supplyAsync(
+                    () -> getInvestorByUsername(investorUsername), apiExecutor);
+
+            CompletableFuture<Project> projectFuture = CompletableFuture.supplyAsync(
+                    () -> getProjectById(projectId), apiExecutor);
+
+            // 等待两个API调用完成
+            CompletableFuture.allOf(investorFuture, projectFuture).join();
+
+            // 获取结果
+            Investor investor = investorFuture.get();
+            Project project = projectFuture.get();
+
+            long fetchTime = System.currentTimeMillis() - startTime;
+            log.debug("并发获取投资人和项目信息耗时: {}ms", fetchTime);
+
             if (investor == null) {
                 throw new IllegalStateException("投资人不存在");
             }
 
-            // 获取项目信息（1次飞书API，轻量查询不加载晋级配置）
-            Project project = getProjectById(projectId);
             if (project == null) {
                 throw new IllegalStateException("项目不存在");
             }
@@ -404,7 +418,9 @@ public class HackathonService {
             // 更新内存中的剩余额度
             investorRemainingAmount.put(investorUsername, remaining - amount);
 
-            log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}", investorUsername, amount, projectId, recordId);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}, 总耗时: {}ms (并发查询耗时: {}ms)",
+                    investorUsername, amount, projectId, recordId, totalTime, fetchTime);
             return true;
         } catch (Exception e) {
             log.error("投资失败", e);
@@ -414,13 +430,53 @@ public class HackathonService {
 
     /**
      * 获取投资人信息（含投资历史）
+     * 优化：并发查询投资人信息和投资历史，减少API调用耗时
      */
     public Investor getInvestorInfo(String username) {
-        Investor investor = getInvestorByUsername(username);
-        if (investor != null) {
-            enrichInvestorWithHistory(investor);
+        try {
+            long startTime = System.currentTimeMillis();
+
+            String investorsTableId = feishuConfig.getInvestorsTableId();
+            String investmentsTableId = feishuConfig.getInvestmentsTableId();
+
+            // 优化：并发获取投资人信息和投资历史
+            CompletableFuture<List<Map<String, Object>>> investorsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(investorsTableId), apiExecutor);
+
+            CompletableFuture<List<Map<String, Object>>> investmentsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(investmentsTableId), apiExecutor);
+
+            // 等待两个API调用完成
+            CompletableFuture.allOf(investorsFuture, investmentsFuture).join();
+
+            // 获取结果
+            List<Map<String, Object>> investorRecords = investorsFuture.get();
+            List<Map<String, Object>> investmentRecords = investmentsFuture.get();
+
+            long fetchTime = System.currentTimeMillis() - startTime;
+            log.debug("并发获取投资人和投资记录耗时: {}ms", fetchTime);
+
+            // 查找匹配的投资人记录
+            for (Map<String, Object> record : investorRecords) {
+                if (fieldValueEquals(record.get("账号"), username)) {
+                    Investor investor = convertToInvestor(record);
+                    // 使用已获取的投资记录数据填充历史
+                    enrichInvestorWithHistoryFromData(investor, investmentRecords);
+
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    log.info("获取投资人信息成功: {}, 总耗时: {}ms (并发查询耗时: {}ms)",
+                            username, totalTime, fetchTime);
+                    return investor;
+                }
+            }
+
+            return null; // 投资人不存在
+        } catch (Exception e) {
+            log.error("获取投资人信息失败", e);
+            return null;
         }
-        return investor;
     }
 
     // ==================== 私有方法 ====================
@@ -593,12 +649,12 @@ public class HackathonService {
         }
     }
 
-    private void enrichInvestorWithHistory(Investor investor) {
+    /**
+     * 使用已获取的投资记录数据填充投资历史（新方法，避免重复API调用）
+     */
+    private void enrichInvestorWithHistoryFromData(Investor investor, List<Map<String, Object>> investmentRecords) {
         try {
-            String tableId = feishuConfig.getInvestmentsTableId();
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
-
-            List<InvestmentHistory> history = records.stream()
+            List<InvestmentHistory> history = investmentRecords.stream()
                     .filter(r -> investor.getUsername().equals(r.get("投资人账号")))
                     .map(r -> {
                         InvestmentHistory h = new InvestmentHistory();
@@ -625,6 +681,19 @@ public class HackathonService {
 
             // 同步到内存缓存
             investorRemainingAmount.put(investor.getUsername(), investor.getRemainingAmount());
+        } catch (Exception e) {
+            log.warn("从数据填充投资历史失败", e);
+        }
+    }
+
+    /**
+     * 旧方法：保留用于其他调用点（如果有）
+     */
+    private void enrichInvestorWithHistory(Investor investor) {
+        try {
+            String tableId = feishuConfig.getInvestmentsTableId();
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            enrichInvestorWithHistoryFromData(investor, records);
         } catch (Exception e) {
             log.warn("加载投资历史失败", e);
         }
