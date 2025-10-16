@@ -258,6 +258,9 @@ async function invest(investorUsername, projectId, amount) {
 // ===== 页面初始化 =====
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // 从localStorage恢复登录状态
+    restoreLoginState();
+
     await initializeData();
     updateStageInfo();
     renderProjects();
@@ -417,6 +420,69 @@ function renderProjectList(containerId, projectList, isQualified) {
     }).join('');
 }
 
+// ===== 登录状态持久化 =====
+
+/**
+ * 保存登录状态到localStorage
+ */
+function saveLoginState(investor) {
+    if (investor && investor.username) {
+        localStorage.setItem('hackathon_logged_user', investor.username);
+    }
+}
+
+/**
+ * 清除登录状态
+ */
+function clearLoginState() {
+    localStorage.removeItem('hackathon_logged_user');
+    currentUser = null;
+
+    // 恢复登录按钮
+    const loginBtn = document.querySelector('button[onclick*="showLoginModal"], button[onclick*="showInvestorPage"]');
+    if (loginBtn) {
+        loginBtn.innerHTML = '<i class="fas fa-user me-2"></i>投资人登录';
+        loginBtn.onclick = () => showLoginModal();
+    }
+}
+
+/**
+ * 从localStorage恢复登录状态
+ */
+async function restoreLoginState() {
+    const savedUsername = localStorage.getItem('hackathon_logged_user');
+    if (savedUsername) {
+        try {
+            const investor = await fetchInvestorInfo(savedUsername);
+            if (investor) {
+                currentUser = investor;
+                updateLoginButton(investor);
+            } else {
+                // 用户不存在，清除localStorage
+                clearLoginState();
+            }
+        } catch (error) {
+            console.error('恢复登录状态失败:', error);
+            clearLoginState();
+        }
+    }
+}
+
+/**
+ * 更新登录按钮显示
+ */
+function updateLoginButton(investor) {
+    const loginBtn = document.querySelector('button[onclick*="showLoginModal"], button[onclick*="showInvestorPage"]');
+    if (loginBtn) {
+        loginBtn.innerHTML = `
+            <img src="${investor.avatar || './default-avatar.svg'}" alt="${investor.name}"
+                 style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">
+            ${investor.name}
+        `;
+        loginBtn.onclick = () => showInvestorPage();
+    }
+}
+
 // ===== 事件处理函数 =====
 
 /**
@@ -440,17 +506,15 @@ async function handleLogin(e) {
 
     if (investor) {
         currentUser = investor;
+
+        // 保存登录状态到localStorage
+        saveLoginState(investor);
+
         showToast('登录成功！', 'success');
         bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
 
         // 更新登录按钮
-        const loginBtn = document.querySelector('[onclick="showLoginModal()"]');
-        loginBtn.innerHTML = `
-            <img src="${investor.avatar || './default-avatar.svg'}" alt="${investor.name}"
-                 style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">
-            ${investor.name}
-        `;
-        loginBtn.onclick = () => showInvestorPage();
+        updateLoginButton(investor);
 
         // 重置表单
         document.getElementById('loginForm').reset();
@@ -596,9 +660,12 @@ async function showInvestorPage() {
             <div class="row justify-content-center">
                 <div class="col-lg-10">
                     <!-- 返回按钮 -->
-                    <div class="mb-4">
+                    <div class="mb-4 d-flex justify-content-between align-items-center">
                         <button class="btn glass-btn" onclick="backToMainPage()">
                             <i class="fas fa-arrow-left me-2"></i>返回主页
+                        </button>
+                        <button class="btn btn-outline-danger glass-btn" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>退出登录
                         </button>
                     </div>
 
@@ -709,6 +776,17 @@ function backToMainPage() {
     const investorPage = document.querySelector('.investor-page');
     if (investorPage) {
         investorPage.remove();
+    }
+}
+
+/**
+ * 退出登录
+ */
+function handleLogout() {
+    if (confirm('确定要退出登录吗？')) {
+        clearLoginState();
+        backToMainPage();
+        showToast('已退出登录', 'info');
     }
 }
 
