@@ -15,6 +15,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +35,15 @@ public class HackathonService {
 
     // 内存缓存投资记录，避免并发问题（生产环境应使用Redis）
     private final Map<String, Integer> investorRemainingAmount = new ConcurrentHashMap<>();
+
+    // 用于并发API调用的线程池（固定4个线程）
+    private final ExecutorService apiExecutor = Executors.newFixedThreadPool(4, r -> {
+        Thread t = new Thread(r);
+        t.setName("feishu-api-" + t.getId());
+        t.setDaemon(true);
+        return t;
+    });
+
     public HackathonService(FeishuService feishuService,
                             FeishuConfig feishuConfig,
                             HackathonProperties hackathonProperties,
@@ -191,20 +203,50 @@ public class HackathonService {
 
     /**
      * 获取所有项目列表（带排名）
+     * 优化：使用CompletableFuture并发调用多个飞书API，减少总响应时间
      */
     public List<Project> getAllProjects() {
         try {
-            String tableId = feishuConfig.getProjectsTableId();
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            long startTime = System.currentTimeMillis();
 
-            if (records == null || records.isEmpty()) {
+            // 并发获取所有需要的飞书表数据
+            CompletableFuture<List<Map<String, Object>>> projectsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(feishuConfig.getProjectsTableId()), apiExecutor);
+
+            CompletableFuture<List<Map<String, Object>>> investmentsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(feishuConfig.getInvestmentsTableId()), apiExecutor);
+
+            CompletableFuture<List<Map<String, Object>>> investorsFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(feishuConfig.getInvestorsTableId()), apiExecutor);
+
+            CompletableFuture<List<Map<String, Object>>> configFuture =
+                CompletableFuture.supplyAsync(() ->
+                    feishuService.listRecords(feishuConfig.getConfigTableId()), apiExecutor);
+
+            // 等待所有API调用完成
+            CompletableFuture.allOf(projectsFuture, investmentsFuture, investorsFuture, configFuture).join();
+
+            // 获取结果
+            List<Map<String, Object>> projectRecords = projectsFuture.get();
+            List<Map<String, Object>> investmentRecords = investmentsFuture.get();
+            List<Map<String, Object>> investorRecords = investorsFuture.get();
+            List<Map<String, Object>> configRecords = configFuture.get();
+
+            long apiTime = System.currentTimeMillis() - startTime;
+            log.debug("并发获取4个飞书表数据耗时: {}ms", apiTime);
+
+            if (projectRecords == null || projectRecords.isEmpty()) {
                 log.warn("从飞书查询项目列表为空");
                 return Collections.emptyList();
             }
 
-            List<Project> projects = records.stream()
+            // 转换项目数据
+            List<Project> projects = projectRecords.stream()
                     .map(this::convertToProject)
-                    .filter(Objects::nonNull)  // 过滤掉转换失败的null项目
+                    .filter(Objects::nonNull)
                     .filter(p -> p.getEnabled() != null && p.getEnabled())
                     .collect(Collectors.toList());
 
@@ -213,11 +255,14 @@ public class HackathonService {
                 return Collections.emptyList();
             }
 
-            // 获取投资记录并汇总
-            enrichProjectsWithInvestments(projects);
+            // 使用已获取的数据填充投资记录（无需再次调用API）
+            enrichProjectsWithInvestmentsFromData(projects, investmentRecords, investorRecords);
 
-            // 计算排名
-            calculateRankings(projects);
+            // 计算排名（传入已获取的配置数据）
+            calculateRankingsFromData(projects, configRecords);
+
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("getAllProjects总耗时: {}ms (API并发耗时: {}ms)", totalTime, apiTime);
 
             return projects;
         } catch (Exception e) {
@@ -475,14 +520,14 @@ public class HackathonService {
         }
     }
 
-    private void enrichProjectsWithInvestments(List<Project> projects) {
+    /**
+     * 使用已获取的数据填充投资记录（新方法，避免重复API调用）
+     */
+    private void enrichProjectsWithInvestmentsFromData(List<Project> projects,
+                                                        List<Map<String, Object>> investmentRecords,
+                                                        List<Map<String, Object>> investorRecords) {
         try {
-            String tableId = feishuConfig.getInvestmentsTableId();
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
-
-            // 预加载所有投资人信息到Map中，避免重复查询
-            String investorsTableId = feishuConfig.getInvestorsTableId();
-            List<Map<String, Object>> investorRecords = feishuService.listRecords(investorsTableId);
+            // 构建投资人Map
             Map<String, Map<String, Object>> investorMap = investorRecords.stream()
                     .collect(Collectors.toMap(
                             r -> (String) r.get("账号"),
@@ -490,9 +535,11 @@ public class HackathonService {
                             (existing, replacement) -> existing
                     ));
 
-            Map<Long, List<Map<String, Object>>> investmentsByProject = records.stream()
+            // 按项目ID分组投资记录
+            Map<Long, List<Map<String, Object>>> investmentsByProject = investmentRecords.stream()
                     .collect(Collectors.groupingBy(r -> getLong(r, "项目ID")));
 
+            // 填充每个项目的投资数据
             for (Project project : projects) {
                 List<Map<String, Object>> investments = investmentsByProject.getOrDefault(project.getId(), Collections.emptyList());
 
@@ -522,6 +569,25 @@ public class HackathonService {
 
                 project.setInvestmentRecords(records2);
             }
+        } catch (Exception e) {
+            log.warn("加载投资记录失败", e);
+        }
+    }
+
+    /**
+     * 旧方法：保留用于其他调用点
+     */
+    private void enrichProjectsWithInvestments(List<Project> projects) {
+        try {
+            String tableId = feishuConfig.getInvestmentsTableId();
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+
+            // 预加载所有投资人信息到Map中，避免重复查询
+            String investorsTableId = feishuConfig.getInvestorsTableId();
+            List<Map<String, Object>> investorRecords = feishuService.listRecords(investorsTableId);
+
+            // 复用新方法
+            enrichProjectsWithInvestmentsFromData(projects, records, investorRecords);
         } catch (Exception e) {
             log.warn("加载投资记录失败", e);
         }
@@ -564,13 +630,62 @@ public class HackathonService {
         }
     }
 
+    /**
+     * 使用已获取的配置数据计算排名（新方法，避免重复API调用）
+     */
+    private void calculateRankingsFromData(List<Project> projects, List<Map<String, Object>> configRecords) {
+        CompetitionStage stage = getCurrentStageFromData(configRecords);
+        calculateRankingsWithStage(projects, stage, configRecords);
+    }
+
+    /**
+     * 从已获取的配置数据中解析当前阶段
+     */
+    private CompetitionStage getCurrentStageFromData(List<Map<String, Object>> configRecords) {
+        try {
+            for (Map<String, Object> record : configRecords) {
+                if ("current_stage".equals(record.get("配置项"))) {
+                    String stageCode = (String) record.get("配置值");
+
+                    if (stageCode != null && !stageCode.trim().isEmpty()) {
+                        log.debug("使用飞书配置的阶段: {}", stageCode);
+                        return CompetitionStage.fromCode(stageCode);
+                    }
+
+                    log.debug("配置值为空，根据当前时间自动判断阶段");
+                    return determineStageByTime();
+                }
+            }
+
+            log.warn("未找到 current_stage 配置项，使用时间判断");
+        } catch (Exception e) {
+            log.error("从配置数据解析比赛阶段失败，根据时间判断", e);
+        }
+
+        return determineStageByTime();
+    }
+
+    /**
+     * 旧方法：保留用于其他调用点
+     */
     private void calculateRankings(List<Project> projects) {
         CompetitionStage stage = getCurrentStage();
+        calculateRankingsWithStage(projects, stage, null);
+    }
+
+    /**
+     * 核心排名计算逻辑（重构后被两个方法共用）
+     */
+    private void calculateRankingsWithStage(List<Project> projects, CompetitionStage stage, List<Map<String, Object>> configRecords) {
         int totalTeams = projects.size();
         int qualifiedCount = hackathonProperties.getQualifiedCount();
 
         if (stage == CompetitionStage.SELECTION) {
-            clearQualifiedProjectsConfig();
+            if (configRecords != null) {
+                clearQualifiedProjectsConfigFromData(configRecords);
+            } else {
+                clearQualifiedProjectsConfig();
+            }
             // 海选期：按UV排名，前15名晋级
             projects.sort((a, b) -> {
                 int cmp = Long.compare(b.getUv(), a.getUv());
@@ -592,7 +707,9 @@ public class HackathonService {
             // 锁定期：晋级名单固定（从飞书配置表读取），晋级区和非晋级区分别按UV排序
 
             // 步骤1：获取晋级项目ID列表（从飞书配置表）
-            List<Long> qualifiedProjectIds = resolveQualifiedProjectIds(projects, qualifiedCount);
+            List<Long> qualifiedProjectIds = (configRecords != null)
+                    ? resolveQualifiedProjectIdsFromData(projects, qualifiedCount, configRecords)
+                    : resolveQualifiedProjectIds(projects, qualifiedCount);
 
             // 如果配置表为空，回退到按海选期规则计算
             if (qualifiedProjectIds.isEmpty()) {
@@ -660,7 +777,9 @@ public class HackathonService {
             // 投资期/结束期：晋级名单固定，使用加权排名算法
 
             // 步骤1：获取晋级项目ID列表
-            List<Long> qualifiedProjectIds = resolveQualifiedProjectIds(projects, qualifiedCount);
+            List<Long> qualifiedProjectIds = (configRecords != null)
+                    ? resolveQualifiedProjectIdsFromData(projects, qualifiedCount, configRecords)
+                    : resolveQualifiedProjectIds(projects, qualifiedCount);
 
             // 如果配置表为空，回退到按UV排名前15名
             if (qualifiedProjectIds.isEmpty()) {
@@ -783,12 +902,12 @@ public class HackathonService {
         }
     }
 
-    private QualifiedProjectsConfig loadQualifiedProjectsConfig() {
+    /**
+     * 从已获取的配置数据中解析晋级项目配置（新方法，避免重复API调用）
+     */
+    private QualifiedProjectsConfig loadQualifiedProjectsConfigFromData(List<Map<String, Object>> configRecords) {
         try {
-            String tableId = feishuConfig.getConfigTableId();
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
-
-            for (Map<String, Object> record : records) {
+            for (Map<String, Object> record : configRecords) {
                 Object key = record.get("配置项");
                 if (key != null && "qualified_project_ids".equals(key.toString())) {
                     String recordId = (String) record.get("record_id");
@@ -808,11 +927,50 @@ public class HackathonService {
                 }
             }
         } catch (Exception e) {
+            log.warn("从数据解析晋级项目配置失败", e);
+        }
+        return new QualifiedProjectsConfig(new LinkedHashSet<>(), null);
+    }
+
+    /**
+     * 旧方法：保留用于其他调用点
+     */
+    private QualifiedProjectsConfig loadQualifiedProjectsConfig() {
+        try {
+            String tableId = feishuConfig.getConfigTableId();
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            return loadQualifiedProjectsConfigFromData(records);
+        } catch (Exception e) {
             log.warn("获取晋级项目配置失败", e);
         }
         return new QualifiedProjectsConfig(new LinkedHashSet<>(), null);
     }
 
+    /**
+     * 从已获取的配置数据中解析晋级项目ID列表（新方法，避免重复API调用）
+     */
+    private List<Long> resolveQualifiedProjectIdsFromData(List<Project> projects, int qualifiedCount, List<Map<String, Object>> configRecords) {
+        QualifiedProjectsConfig config = loadQualifiedProjectsConfigFromData(configRecords);
+        if (!config.getProjectIds().isEmpty()) {
+            return new ArrayList<>(config.getProjectIds());
+        }
+
+        List<Long> computed = selectTopProjectsByUv(projects, qualifiedCount).stream()
+                .map(Project::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (!computed.isEmpty()) {
+            persistQualifiedProjects(computed, config.getRecordId());
+            log.info("未配置晋级名单，按UV锁定前{}名并写入配置", computed.size());
+        }
+
+        return computed;
+    }
+
+    /**
+     * 旧方法：保留用于其他调用点
+     */
     private List<Long> resolveQualifiedProjectIds(List<Project> projects, int qualifiedCount) {
         QualifiedProjectsConfig config = loadQualifiedProjectsConfig();
         if (!config.getProjectIds().isEmpty()) {
@@ -883,6 +1041,28 @@ public class HackathonService {
         }
     }
 
+    /**
+     * 从已获取的配置数据中清除晋级项目配置（新方法，避免重复API调用）
+     */
+    private void clearQualifiedProjectsConfigFromData(List<Map<String, Object>> configRecords) {
+        try {
+            QualifiedProjectsConfig config = loadQualifiedProjectsConfigFromData(configRecords);
+            if (config.getRecordId() == null || config.getProjectIds().isEmpty()) {
+                return;
+            }
+
+            String tableId = feishuConfig.getConfigTableId();
+            Map<String, Object> fields = new HashMap<>();
+            fields.put("配置值", "");
+            feishuService.updateRecord(tableId, config.getRecordId(), fields);
+        } catch (Exception e) {
+            log.warn("清空晋级项目配置失败", e);
+        }
+    }
+
+    /**
+     * 旧方法：保留用于其他调用点
+     */
     private void clearQualifiedProjectsConfig() {
         try {
             QualifiedProjectsConfig config = loadQualifiedProjectsConfig();
