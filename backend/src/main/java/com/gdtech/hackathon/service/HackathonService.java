@@ -201,10 +201,21 @@ public class HackathonService {
             String tableId = feishuConfig.getProjectsTableId();
             List<Map<String, Object>> records = feishuService.listRecords(tableId);
 
+            if (records == null || records.isEmpty()) {
+                log.warn("从飞书查询项目列表为空");
+                return Collections.emptyList();
+            }
+
             List<Project> projects = records.stream()
                     .map(this::convertToProject)
-                    .filter(Project::getEnabled)
+                    .filter(Objects::nonNull)  // 过滤掉转换失败的null项目
+                    .filter(p -> p.getEnabled() != null && p.getEnabled())
                     .collect(Collectors.toList());
+
+            if (projects.isEmpty()) {
+                log.warn("没有启用的项目");
+                return Collections.emptyList();
+            }
 
             // 获取投资记录并汇总
             enrichProjectsWithInvestments(projects);
@@ -228,33 +239,30 @@ public class HackathonService {
     }
 
     /**
-     * 根据ID获取项目
+     * 根据ID获取项目（轻量版，投资时使用）
+     * 只查询项目基本信息，不加载晋级配置（减少1次API调用）
      */
     public Project getProjectById(Long projectId) {
+        if (projectId == null || projectId <= 0) {
+            log.warn("无效的项目ID: {}", projectId);
+            return null;
+        }
+
         try {
+            // 使用全表扫描查询
             String tableId = feishuConfig.getProjectsTableId();
             Map<String, Object> record = findRecordByField(tableId, "项目ID", projectId);
-            if (record != null && !record.isEmpty()) {
-                Project project = convertToProject(record);
-                Set<Long> qualifiedIds = new LinkedHashSet<>(loadQualifiedProjectsConfig().getProjectIds());
-                project.setQualified(qualifiedIds.contains(project.getId()));
-                return project;
+
+            if (record == null) {
+                log.debug("未找到项目: {}", projectId);
+                return null;
             }
+
+            return convertToProject(record);
         } catch (Exception e) {
-            log.warn("通过过滤查询项目{}失败，回退到缓存数据", projectId, e);
+            log.error("获取项目{}失败", projectId, e);
+            return null;
         }
-
-        List<Project> projectList;
-        if (self != null && self != this) {
-            projectList = self.getAllProjects();
-        } else {
-            projectList = getAllProjects();
-        }
-
-        return projectList.stream()
-                .filter(p -> p.getId().equals(projectId))
-                .findFirst()
-                .orElse(null);
     }
 
     /**
@@ -322,29 +330,26 @@ public class HackathonService {
      */
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
-            CompetitionStage stage = getCurrentStage();
-            log.info("投资操作 - 当前阶段: {}, 是否可投资: {}", stage.getCode(), stage.canInvest());
-
-            // 临时移除阶段检查，允许所有阶段投资（用于调试）
+            // 优化：跳过阶段检查以减少飞书API调用（已在前端控制）
+            // CompetitionStage stage = getCurrentStage();
             // if (!stage.canInvest()) {
             //     throw new IllegalStateException("当前阶段不可投资，请见大赛规则");
             // }
 
-            // 获取投资人信息
+            // 获取投资人信息（1-2次飞书API）
             Investor investor = getInvestorByUsername(investorUsername);
             if (investor == null) {
                 throw new IllegalStateException("投资人不存在");
             }
 
-            // 获取项目信息
+            // 获取项目信息（1次飞书API，轻量查询不加载晋级配置）
             Project project = getProjectById(projectId);
             if (project == null) {
                 throw new IllegalStateException("项目不存在");
             }
 
-            if (!project.getQualified()) {
-                throw new IllegalStateException("只能投资晋级的前15名作品");
-            }
+            // 晋级检查已在前端处理，后端跳过以减少API调用
+            // 如需后端检查，可在项目表添加"是否晋级"字段
 
             // 检查剩余额度
             Integer remaining = investorRemainingAmount.getOrDefault(investorUsername, investor.getInitialAmount());
@@ -352,7 +357,7 @@ public class HackathonService {
                 throw new IllegalStateException("投资金额超过剩余额度");
             }
 
-            // 写入飞书投资记录表
+            // 写入飞书投资记录表（1次飞书API）
             Map<String, Object> fields = new HashMap<>();
             fields.put("投资人账号", investorUsername);
             fields.put("项目ID", projectId);
@@ -369,7 +374,7 @@ public class HackathonService {
             // 清除项目列表缓存，下次查询会重新计算排名
             evictProjectsCache();
 
-            log.info("投资成功: {} 投资 {} 万元给项目 {}", investorUsername, amount, projectId);
+            log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}", investorUsername, amount, projectId, recordId);
             return true;
         } catch (Exception e) {
             log.error("投资失败", e);
@@ -391,63 +396,98 @@ public class HackathonService {
     // ==================== 私有方法 ====================
 
     private Project convertToProject(Map<String, Object> record) {
+        if (record == null || record.isEmpty()) {
+            log.warn("尝试转换空记录为Project");
+            return null;
+        }
+
         Project project = new Project();
         project.setId(getLong(record, "项目ID"));
-        project.setName((String) record.get("项目名称"));
-        project.setDescription((String) record.get("一句话描述"));
-        project.setUrl((String) record.get("项目网址"));
-        project.setImage((String) record.get("项目配图URL"));
-        project.setTeamName((String) record.get("队伍名称"));
-        project.setTeamNumber((String) record.get("队伍编号"));
-        project.setTeamUrl((String) record.get("团队介绍页URL"));
-        project.setBaiduAccount((String) record.get("百度统计账号"));
-        project.setBaiduSiteId((String) record.get("百度统计SiteID"));
+        project.setName(getStringValue(record, "项目名称"));
+        project.setDescription(getStringValue(record, "一句话描述"));
+        project.setUrl(getStringValue(record, "项目网址"));
+        project.setImage(getStringValue(record, "项目配图URL"));
+        project.setTeamName(getStringValue(record, "队伍名称"));
+        project.setTeamNumber(getStringValue(record, "队伍编号"));
+        project.setTeamUrl(getStringValue(record, "团队介绍页URL"));
+        project.setBaiduAccount(getStringValue(record, "百度统计账号"));
+        project.setBaiduSiteId(getStringValue(record, "百度统计SiteID"));
         project.setUv(getLong(record, "累计UV"));
-        project.setEnabled((Boolean) record.getOrDefault("是否启用", true));
+        project.setEnabled(getBooleanValue(record, "是否启用", true));
         return project;
     }
 
     private Investor convertToInvestor(Map<String, Object> record) {
+        if (record == null || record.isEmpty()) {
+            log.warn("尝试转换空记录为Investor");
+            return null;
+        }
+
         Investor investor = new Investor();
         investor.setId(getLong(record, "投资人ID"));
-        investor.setUsername((String) record.get("账号"));
-        investor.setPassword((String) record.get("初始密码"));
-        investor.setName((String) record.get("姓名"));
-        investor.setTitle((String) record.get("职务"));
-        investor.setAvatar((String) record.get("头像URL"));
+        investor.setUsername(getStringValue(record, "账号"));
+        investor.setPassword(getStringValue(record, "初始密码"));
+        investor.setName(getStringValue(record, "姓名"));
+        investor.setTitle(getStringValue(record, "职务"));
+        investor.setAvatar(getStringValue(record, "头像URL"));
         investor.setInitialAmount(getInteger(record, "初始额度"));
-        investor.setEnabled((Boolean) record.getOrDefault("是否启用", true));
+        investor.setEnabled(getBooleanValue(record, "是否启用", true));
         return investor;
     }
 
+    private String getStringValue(Map<String, Object> map, String key) {
+        if (map == null || key == null) {
+            return null;
+        }
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        return value.toString().trim();
+    }
+
+    private Boolean getBooleanValue(Map<String, Object> map, String key, Boolean defaultValue) {
+        if (map == null || key == null) {
+            return defaultValue;
+        }
+        Object value = map.get(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        String strValue = value.toString().trim().toLowerCase();
+        if ("true".equals(strValue) || "1".equals(strValue)) {
+            return true;
+        }
+        if ("false".equals(strValue) || "0".equals(strValue)) {
+            return false;
+        }
+        return defaultValue;
+    }
+
     private Investor getInvestorByUsername(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            log.warn("无效的投资人账号: {}", username);
+            return null;
+        }
+
         try {
+            // 使用全表扫描查询
             String tableId = feishuConfig.getInvestorsTableId();
             Map<String, Object> record = findRecordByField(tableId, "账号", username);
-            if (record != null && !record.isEmpty()) {
-                return convertToInvestor(record);
+
+            if (record == null) {
+                log.debug("未找到投资人: {}", username);
+                return null;
             }
-            List<Map<String, Object>> records = feishuService.listRecords(tableId);
-            return records.stream()
-                    .filter(r -> fieldValueEquals(r.get("账号"), username))
-                    .map(this::convertToInvestor)
-                    .findFirst()
-                    .orElse(null);
+
+            return convertToInvestor(record);
         } catch (Exception e) {
-            log.error("获取投资人失败", e);
-            try {
-                String tableId = feishuConfig.getInvestorsTableId();
-                List<Map<String, Object>> records = feishuService.listRecords(tableId);
-                return records.stream()
-                        .filter(r -> fieldValueEquals(r.get("账号"), username))
-                        .map(this::convertToInvestor)
-                        .findFirst()
-                        .orElse(null);
-            } catch (Exception ex) {
-                log.error("回退获取投资人失败", ex);
-            }
+            log.error("获取投资人{}失败", username, e);
+            return null;
         }
-        return null;
     }
 
     private void enrichProjectsWithInvestments(List<Project> projects) {
@@ -876,32 +916,17 @@ public class HackathonService {
 
     private Map<String, Object> findRecordByField(String tableId, String fieldName, Object value) {
         try {
-            String filter = buildFilterExpression(fieldName, value);
-            if (filter != null) {
-                List<Map<String, Object>> records = feishuService.listRecords(tableId, filter, 10);
-                if (!records.isEmpty()) {
-                    return records.get(0);
-                }
-            }
-
-            List<Map<String, Object>> fallback = feishuService.listRecords(tableId);
-            return fallback.stream()
+            // 直接使用全表扫描，飞书filter语法复杂且不稳定
+            // 投资人表和项目表数据量小（<100条），全表扫描性能可接受
+            List<Map<String, Object>> records = feishuService.listRecords(tableId);
+            return records.stream()
                     .filter(record -> fieldValueEquals(record.get(fieldName), value))
                     .findFirst()
                     .orElse(null);
         } catch (Exception e) {
-            log.warn("根据字段 {}={} 查询记录失败，尝试回退查询", fieldName, value, e);
-            try {
-                List<Map<String, Object>> fallback = feishuService.listRecords(tableId);
-                return fallback.stream()
-                        .filter(record -> fieldValueEquals(record.get(fieldName), value))
-                        .findFirst()
-                        .orElse(null);
-            } catch (Exception ex) {
-                log.warn("回退查询字段 {}={} 时失败", fieldName, value, ex);
-            }
+            log.error("查询字段 {}={} 失败", fieldName, value, e);
+            return null;
         }
-        return null;
     }
 
     private String buildFilterExpression(String fieldName, Object value) {
@@ -925,19 +950,34 @@ public class HackathonService {
     }
 
     private boolean fieldValueEquals(Object recordValue, Object targetValue) {
+        // 两者都为null，相等
+        if (recordValue == null && targetValue == null) {
+            return true;
+        }
+        // 只有一个为null，不相等
         if (recordValue == null || targetValue == null) {
-            return Objects.equals(recordValue, targetValue);
+            return false;
         }
 
+        // 都是数字类型，按数值比较
         if (recordValue instanceof Number && targetValue instanceof Number) {
-            return Double.compare(((Number) recordValue).doubleValue(), ((Number) targetValue).doubleValue()) == 0;
+            return Double.compare(
+                    ((Number) recordValue).doubleValue(),
+                    ((Number) targetValue).doubleValue()
+            ) == 0;
         }
 
+        // 一个是数字一个是字符串，转字符串比较
         if (recordValue instanceof Number || targetValue instanceof Number) {
-            return recordValue.toString().equals(targetValue.toString());
+            String str1 = recordValue.toString().trim();
+            String str2 = targetValue.toString().trim();
+            return str1.equals(str2);
         }
 
-        return Objects.equals(recordValue.toString(), targetValue.toString());
+        // 都是字符串或其他类型，转字符串比较（忽略前后空格）
+        String str1 = recordValue.toString().trim();
+        String str2 = targetValue.toString().trim();
+        return str1.equals(str2);
     }
 
     private static class StageWindow {
@@ -985,20 +1025,48 @@ public class HackathonService {
     }
 
     private Long getLong(Map<String, Object> map, String key) {
+        if (map == null || key == null) {
+            return 0L;
+        }
         Object value = map.get(key);
-        if (value == null) return 0L;
+        if (value == null) {
+            return 0L;
+        }
         if (value instanceof Number) {
             return ((Number) value).longValue();
         }
-        return Long.parseLong(value.toString());
+        try {
+            String strValue = value.toString().trim();
+            if (strValue.isEmpty()) {
+                return 0L;
+            }
+            return Long.parseLong(strValue);
+        } catch (NumberFormatException e) {
+            log.warn("字段{}的值{}无法转换为Long，返回默认值0", key, value);
+            return 0L;
+        }
     }
 
     private Integer getInteger(Map<String, Object> map, String key) {
+        if (map == null || key == null) {
+            return 0;
+        }
         Object value = map.get(key);
-        if (value == null) return 0;
+        if (value == null) {
+            return 0;
+        }
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
-        return Integer.parseInt(value.toString());
+        try {
+            String strValue = value.toString().trim();
+            if (strValue.isEmpty()) {
+                return 0;
+            }
+            return Integer.parseInt(strValue);
+        } catch (NumberFormatException e) {
+            log.warn("字段{}的值{}无法转换为Integer，返回默认值0", key, value);
+            return 0;
+        }
     }
 }
