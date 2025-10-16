@@ -5,8 +5,6 @@ import com.gdtech.hackathon.config.HackathonProperties;
 import com.gdtech.hackathon.model.*;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
@@ -193,9 +191,7 @@ public class HackathonService {
 
     /**
      * 获取所有项目列表（带排名）
-     * 缓存1小时
      */
-    @Cacheable(value = "projects", unless = "#result == null || #result.isEmpty()")
     public List<Project> getAllProjects() {
         try {
             String tableId = feishuConfig.getProjectsTableId();
@@ -230,13 +226,6 @@ public class HackathonService {
         }
     }
 
-    /**
-     * 清除项目列表缓存
-     */
-    @CacheEvict(value = "projects", allEntries = true)
-    public void evictProjectsCache() {
-        log.info("清除项目列表缓存");
-    }
 
     /**
      * 根据ID获取项目（轻量版，投资时使用）
@@ -326,7 +315,6 @@ public class HackathonService {
 
     /**
      * 执行投资
-     * 投资成功后清除项目列表缓存
      */
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
@@ -370,9 +358,6 @@ public class HackathonService {
 
             // 更新内存中的剩余额度
             investorRemainingAmount.put(investorUsername, remaining - amount);
-
-            // 清除项目列表缓存，下次查询会重新计算排名
-            evictProjectsCache();
 
             log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}", investorUsername, amount, projectId, recordId);
             return true;
