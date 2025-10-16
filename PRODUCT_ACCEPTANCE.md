@@ -14,8 +14,8 @@
 | 服务 | 地址 | 状态 |
 |------|------|------|
 | 前端网站 | https://hackathon-frontend.preview.huawei-zeabur.cn | 🟢 运行中 |
-| 后端API | https://hackathon-backend.preview.huawei-zeabur.cn/api | 🟢 运行中 |
-| API健康检查 | https://hackathon-backend.preview.huawei-zeabur.cn/api/hackathon/health | 🟢 正常 |
+| 后端API | https://hackathon-backend.gaodun.com/api | 🟢 运行中 |
+| API健康检查 | https://hackathon-backend.gaodun.com/api/hackathon/health | 🟢 正常 |
 
 ### 开发环境（本地）
 
@@ -237,7 +237,7 @@
 ## 六、API接口文档
 
 ### 基础信息
-- **Base URL（生产）**：https://hackathon-backend.preview.huawei-zeabur.cn/api/hackathon
+- **Base URL（生产）**：https://hackathon-backend.gaodun.com/api/hackathon
 - **Base URL（本地）**：http://localhost:8080/api/hackathon
 - **Content-Type**：application/json
 - **字符编码**：UTF-8

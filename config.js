@@ -6,7 +6,7 @@
 const CONFIG = {
   // Backend API base URL
   // 后端API基础URL
-  API_BASE_URL: 'https://hackathon-backend.preview.huawei-zeabur.cn/api/hackathon',
+  API_BASE_URL: 'https://hackathon-backend.gaodun.com/api/hackathon',
 
   // For local development, uncomment the line below:
   // 本地开发时，取消注释下面这行：
