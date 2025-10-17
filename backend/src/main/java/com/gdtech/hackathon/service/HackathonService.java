@@ -38,9 +38,6 @@ public class HackathonService {
     private final CacheManager cacheManager;
     private HackathonService self;
 
-    // 内存缓存投资记录，避免并发问题（生产环境应使用Redis）
-    private final Map<String, Integer> investorRemainingAmount = new ConcurrentHashMap<>();
-
     // 用于并发API调用的线程池（固定4个线程）
     private final ExecutorService apiExecutor = Executors.newFixedThreadPool(4, r -> {
         Thread t = new Thread(r);
@@ -374,9 +371,9 @@ public class HackathonService {
      * 投资成功后清除相关缓存 (afterInvocation=true确保在方法执行后清除)
      */
     @Caching(evict = {
-            @CacheEvict(value = "investor", key = "#investorUsername", afterInvocation = true),
-            @CacheEvict(value = "project", key = "#projectId", afterInvocation = true),
-            @CacheEvict(value = "projects", allEntries = true, afterInvocation = true)
+            @CacheEvict(value = "investor", key = "#investorUsername", beforeInvocation = false),
+            @CacheEvict(value = "project", key = "#projectId", beforeInvocation = false),
+            @CacheEvict(value = "projects", allEntries = true, beforeInvocation = false)
     })
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
@@ -416,25 +413,39 @@ public class HackathonService {
             // 晋级检查已在前端处理，后端跳过以减少API调用
             // 如需后端检查，可在项目表添加"是否晋级"字段
 
-            // 检查剩余额度
-            Integer remaining = investorRemainingAmount.getOrDefault(investorUsername, investor.getInitialAmount());
+            // 检查剩余额度（从飞书表读取）
+            Integer remaining = investor.getRemainingAmount();
+            if (remaining == null) {
+                remaining = investor.getInitialAmount(); // 兼容旧数据
+            }
             if (amount > remaining) {
                 throw new IllegalStateException("投资金额超过剩余额度");
             }
 
-            // 写入飞书投资记录表（1次飞书API）
-            Map<String, Object> fields = new HashMap<>();
-            fields.put("投资人账号", investorUsername);
-            fields.put("项目ID", projectId);
-            fields.put("投资金额", amount);
-            fields.put("投资时间", System.currentTimeMillis());  // 使用Unix时间戳（毫秒）
-            fields.put("投资人姓名", investor.getName());
-            fields.put("项目名称", project.getName());
+            // 计算新的剩余额度
+            Integer newRemaining = remaining - amount;
 
-            String recordId = feishuService.createRecord(feishuConfig.getInvestmentsTableId(), fields);
+            // 写入飞书投资记录表
+            Map<String, Object> investmentFields = new HashMap<>();
+            investmentFields.put("投资人账号", investorUsername);
+            investmentFields.put("项目ID", projectId);
+            investmentFields.put("投资金额", amount);
+            investmentFields.put("投资时间", System.currentTimeMillis());  // 使用Unix时间戳（毫秒）
+            investmentFields.put("投资人姓名", investor.getName());
+            investmentFields.put("项目名称", project.getName());
 
-            // 更新内存中的剩余额度
-            investorRemainingAmount.put(investorUsername, remaining - amount);
+            String recordId = feishuService.createRecord(feishuConfig.getInvestmentsTableId(), investmentFields);
+
+            // 更新飞书投资人表的剩余额度
+            String investorsTableId = feishuConfig.getInvestorsTableId();
+            Map<String, Object> investorRecord = findRecordByField(investorsTableId, "账号", investorUsername);
+            if (investorRecord != null) {
+                String investorRecordId = (String) investorRecord.get("record_id");
+                Map<String, Object> updateFields = new HashMap<>();
+                updateFields.put("剩余额度", newRemaining);
+                feishuService.updateRecord(investorsTableId, investorRecordId, updateFields);
+                log.debug("更新投资人{}剩余额度: {} -> {}", investorUsername, remaining, newRemaining);
+            }
 
             long totalTime = System.currentTimeMillis() - startTime;
             log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}, 总耗时: {}ms (并发查询耗时: {}ms)",
@@ -535,6 +546,7 @@ public class HackathonService {
         investor.setTitle(getStringValue(record, "职务"));
         investor.setAvatar(getStringValue(record, "头像URL"));
         investor.setInitialAmount(getInteger(record, "初始额度"));
+        investor.setRemainingAmount(getInteger(record, "剩余额度"));  // 从飞书读取剩余额度
         investor.setEnabled(getBooleanValue(record, "是否启用", true));
         return investor;
     }
@@ -703,10 +715,11 @@ public class HackathonService {
 
             int invested = history.stream().mapToInt(InvestmentHistory::getAmount).sum();
             investor.setInvestedAmount(invested);
-            investor.setRemainingAmount(investor.getInitialAmount() - invested);
 
-            // 同步到内存缓存
-            investorRemainingAmount.put(investor.getUsername(), investor.getRemainingAmount());
+            // 如果飞书表没有剩余额度数据，使用计算值
+            if (investor.getRemainingAmount() == null) {
+                investor.setRemainingAmount(investor.getInitialAmount() - invested);
+            }
         } catch (Exception e) {
             log.warn("从数据填充投资历史失败", e);
         }
