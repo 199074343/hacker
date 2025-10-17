@@ -371,12 +371,12 @@ public class HackathonService {
     /**
      * 执行投资
      * 优化：并发获取投资人和项目信息，减少API调用耗时
-     * 投资成功后清除相关缓存
+     * 投资成功后清除相关缓存 (afterInvocation=true确保在方法执行后清除)
      */
     @Caching(evict = {
-            @CacheEvict(value = "investor", key = "#investorUsername"),  // 清除投资人缓存
-            @CacheEvict(value = "project", key = "#projectId"),          // 清除项目缓存
-            @CacheEvict(value = "projects", allEntries = true)           // 清除项目列表缓存
+            @CacheEvict(value = "investor", key = "#investorUsername", afterInvocation = true),
+            @CacheEvict(value = "project", key = "#projectId", afterInvocation = true),
+            @CacheEvict(value = "projects", allEntries = true, afterInvocation = true)
     })
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {

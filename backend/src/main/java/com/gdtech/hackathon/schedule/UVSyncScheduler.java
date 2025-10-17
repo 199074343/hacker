@@ -43,12 +43,12 @@ public class UVSyncScheduler {
     /**
      * 同步所有项目的UV数据
      * 根据配置的同步间隔定期执行（默认10分钟）
-     * UV更新后清除所有项目相关缓存
+     * UV更新后清除所有项目相关缓存 (afterInvocation=true确保在同步完成后清除)
      */
     @Scheduled(fixedDelayString = "${baidu.tongji.sync-interval:10}000", initialDelay = 60000)
     @Caching(evict = {
-            @CacheEvict(value = "projects", allEntries = true),  // 清除项目列表缓存
-            @CacheEvict(value = "project", allEntries = true)    // 清除所有单个项目缓存
+            @CacheEvict(value = "projects", allEntries = true, afterInvocation = true),
+            @CacheEvict(value = "project", allEntries = true, afterInvocation = true)
     })
     public void syncAllProjectUV() {
         try {
