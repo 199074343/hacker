@@ -5,6 +5,8 @@ import com.gdtech.hackathon.config.FeishuConfig;
 import com.gdtech.hackathon.service.BaiduTongjiService;
 import com.gdtech.hackathon.service.FeishuService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -41,8 +43,13 @@ public class UVSyncScheduler {
     /**
      * 同步所有项目的UV数据
      * 根据配置的同步间隔定期执行（默认10分钟）
+     * UV更新后清除所有项目相关缓存
      */
     @Scheduled(fixedDelayString = "${baidu.tongji.sync-interval:10}000", initialDelay = 60000)
+    @Caching(evict = {
+            @CacheEvict(value = "projects", allEntries = true),  // 清除项目列表缓存
+            @CacheEvict(value = "project", allEntries = true)    // 清除所有单个项目缓存
+    })
     public void syncAllProjectUV() {
         try {
             log.info("开始同步项目UV数据...");

@@ -151,4 +151,63 @@ public class HackathonController {
     public ApiResponse<String> health() {
         return ApiResponse.success("GDTech Hackathon API is running");
     }
+
+    /**
+     * 清除所有缓存
+     * 用于测试时手动修改飞书数据后立即刷新缓存
+     *
+     * 使用场景:
+     * 1. 手动修改飞书投资人信息后
+     * 2. 手动修改飞书项目信息后
+     * 3. 手动修改晋级名单后
+     *
+     * @return 清除结果
+     */
+    @PostMapping("/cache/clear")
+    public ApiResponse<String> clearAllCache() {
+        try {
+            hackathonService.clearAllCache();
+            log.info("手动清除所有缓存成功");
+            return ApiResponse.success("缓存已清除,数据将从飞书重新加载");
+        } catch (Exception e) {
+            log.error("清除缓存失败", e);
+            return ApiResponse.error("清除缓存失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 清除指定投资人缓存
+     *
+     * @param username 投资人账号
+     * @return 清除结果
+     */
+    @PostMapping("/cache/clear/investor/{username}")
+    public ApiResponse<String> clearInvestorCache(@PathVariable String username) {
+        try {
+            hackathonService.clearInvestorCache(username);
+            log.info("清除投资人 {} 的缓存成功", username);
+            return ApiResponse.success("投资人 " + username + " 的缓存已清除");
+        } catch (Exception e) {
+            log.error("清除投资人缓存失败", e);
+            return ApiResponse.error("清除缓存失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 清除指定项目缓存
+     *
+     * @param projectId 项目ID
+     * @return 清除结果
+     */
+    @PostMapping("/cache/clear/project/{projectId}")
+    public ApiResponse<String> clearProjectCache(@PathVariable Long projectId) {
+        try {
+            hackathonService.clearProjectCache(projectId);
+            log.info("清除项目 {} 的缓存成功", projectId);
+            return ApiResponse.success("项目 " + projectId + " 的缓存已清除");
+        } catch (Exception e) {
+            log.error("清除项目缓存失败", e);
+            return ApiResponse.error("清除缓存失败: " + e.getMessage());
+        }
+    }
 }

@@ -5,6 +5,10 @@ import com.gdtech.hackathon.config.HackathonProperties;
 import com.gdtech.hackathon.model.*;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +35,7 @@ public class HackathonService {
     private final FeishuConfig feishuConfig;
     private final HackathonProperties hackathonProperties;
     private final ApplicationContext applicationContext;
+    private final CacheManager cacheManager;
     private HackathonService self;
 
     // 内存缓存投资记录，避免并发问题（生产环境应使用Redis）
@@ -47,11 +52,13 @@ public class HackathonService {
     public HackathonService(FeishuService feishuService,
                             FeishuConfig feishuConfig,
                             HackathonProperties hackathonProperties,
-                            ApplicationContext applicationContext) {
+                            ApplicationContext applicationContext,
+                            CacheManager cacheManager) {
         this.feishuService = feishuService;
         this.feishuConfig = feishuConfig;
         this.hackathonProperties = hackathonProperties;
         this.applicationContext = applicationContext;
+        this.cacheManager = cacheManager;
     }
 
     @PostConstruct
@@ -275,7 +282,10 @@ public class HackathonService {
     /**
      * 根据ID获取项目（轻量版，投资时使用）
      * 只查询项目基本信息，不加载晋级配置（减少1次API调用）
+     * 使用缓存,5分钟过期
+     * 投资操作或UV同步后会清除缓存
      */
+    @Cacheable(value = "project", key = "#projectId", unless = "#result == null")
     public Project getProjectById(Long projectId) {
         if (projectId == null || projectId <= 0) {
             log.warn("无效的项目ID: {}", projectId);
@@ -292,7 +302,9 @@ public class HackathonService {
                 return null;
             }
 
-            return convertToProject(record);
+            Project project = convertToProject(record);
+            log.debug("从飞书加载项目: {}, 将缓存5分钟", projectId);
+            return project;
         } catch (Exception e) {
             log.error("获取项目{}失败", projectId, e);
             return null;
@@ -359,7 +371,13 @@ public class HackathonService {
     /**
      * 执行投资
      * 优化：并发获取投资人和项目信息，减少API调用耗时
+     * 投资成功后清除相关缓存
      */
+    @Caching(evict = {
+            @CacheEvict(value = "investor", key = "#investorUsername"),  // 清除投资人缓存
+            @CacheEvict(value = "project", key = "#projectId"),          // 清除项目缓存
+            @CacheEvict(value = "projects", allEntries = true)           // 清除项目列表缓存
+    })
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
             long startTime = System.currentTimeMillis();
@@ -553,6 +571,12 @@ public class HackathonService {
         return defaultValue;
     }
 
+    /**
+     * 根据用户名获取投资人信息
+     * 使用缓存,5分钟过期
+     * 投资操作后会清除缓存
+     */
+    @Cacheable(value = "investor", key = "#username", unless = "#result == null")
     private Investor getInvestorByUsername(String username) {
         if (username == null || username.trim().isEmpty()) {
             log.warn("无效的投资人账号: {}", username);
@@ -569,7 +593,9 @@ public class HackathonService {
                 return null;
             }
 
-            return convertToInvestor(record);
+            Investor investor = convertToInvestor(record);
+            log.debug("从飞书加载投资人: {}, 将缓存5分钟", username);
+            return investor;
         } catch (Exception e) {
             log.error("获取投资人{}失败", username, e);
             return null;
@@ -1302,5 +1328,41 @@ public class HackathonService {
             log.warn("字段{}的值{}无法转换为Integer，返回默认值0", key, value);
             return 0;
         }
+    }
+
+    // ==================== 缓存管理方法 ====================
+
+    /**
+     * 清除所有缓存
+     * 用于测试时手动修改飞书数据后立即刷新
+     */
+    public void clearAllCache() {
+        cacheManager.getCacheNames().forEach(cacheName -> {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.clear();
+                log.info("清除缓存: {}", cacheName);
+            }
+        });
+    }
+
+    /**
+     * 清除指定投资人缓存
+     *
+     * @param username 投资人账号
+     */
+    @CacheEvict(value = "investor", key = "#username")
+    public void clearInvestorCache(String username) {
+        log.info("清除投资人缓存: {}", username);
+    }
+
+    /**
+     * 清除指定项目缓存
+     *
+     * @param projectId 项目ID
+     */
+    @CacheEvict(value = "project", key = "#projectId")
+    public void clearProjectCache(Long projectId) {
+        log.info("清除项目缓存: {}", projectId);
     }
 }
