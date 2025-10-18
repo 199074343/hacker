@@ -58,7 +58,7 @@ body {
 
 /* Banner 宣传图区域 */
 .banner-container {
-    margin-top: 70px;
+    margin-top: 100px;
     width: 100%;
     overflow: hidden;
     position: relative;
@@ -664,7 +664,7 @@ body {
 /* 响应式设计 */
 @media (max-width: 768px) {
     .banner-container {
-        margin-top: 60px;
+        margin-top: 80px;
     }
 
     .banner-image {
@@ -707,7 +707,7 @@ body {
 
 @media (max-width: 576px) {
     .banner-container {
-        margin-top: 56px;
+        margin-top: 70px;
     }
 
     .banner-image {
