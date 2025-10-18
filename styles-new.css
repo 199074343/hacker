@@ -377,11 +377,15 @@ body {
     color: white;
 }
 
-.btn-invest:disabled {
-    background: rgba(255, 255, 255, 0.2);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+.btn-invest:disabled,
+.btn-invest.disabled {
+    background: rgba(128, 128, 128, 0.3) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 /* ===== 模态框样式 - 完全重写 ===== */

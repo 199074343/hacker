@@ -407,9 +407,11 @@ function renderProjectList(containerId, projectList, isQualified) {
                                 <i class="fas fa-external-link-alt me-2"></i>访问
                             </button>
                             ${showInvestButton ? `
-                                <button class="btn btn-invest"
-                                        onclick="showInvestModal(${project.id})">
+                                <button class="btn btn-invest ${currentUser && currentUser.remainingAmount <= 0 ? 'disabled' : ''}"
+                                        onclick="showInvestModal(${project.id})"
+                                        ${currentUser && currentUser.remainingAmount <= 0 ? 'disabled title="剩余额度不足"' : ''}>
                                     <i class="fas fa-coins me-2"></i>投资
+                                    ${currentUser && currentUser.remainingAmount <= 0 ? '(余额不足)' : ''}
                                 </button>
                             ` : ''}
                         </div>
@@ -566,7 +568,17 @@ function showInvestModal(projectId) {
     document.getElementById('remainingAmount').textContent = currentUser.remainingAmount;
     document.getElementById('investAmount').max = currentUser.remainingAmount;
     document.getElementById('investForm').dataset.projectId = projectId;
-    setInvestButtonState(false);
+
+    // 如果余额为0，禁用投资按钮
+    const submitBtn = document.getElementById('investSubmitBtn');
+    if (currentUser.remainingAmount <= 0) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-coins me-2"></i>余额不足';
+        submitBtn.classList.add('disabled');
+    } else {
+        setInvestButtonState(false);
+        submitBtn.classList.remove('disabled');
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('investModal'));
     modal.show();
