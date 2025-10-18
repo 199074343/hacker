@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #000000 url('./background.png') center center fixed;
+    background: #000000 url('./new_background.png') center center fixed;
     background-size: cover;
     min-height: 100vh;
     position: relative;
