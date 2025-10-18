@@ -99,7 +99,7 @@ body {
 
 /* 主要内容区域 */
 .main-content {
-    padding-top: 30px;
+    padding-top: 500px;
     padding-bottom: 50px;
 }
 
@@ -675,7 +675,7 @@ body {
     }
 
     .main-content {
-        padding-top: 20px;
+        padding-top: 400px;
     }
 
     .navbar-brand {
@@ -718,7 +718,7 @@ body {
     }
 
     .main-content {
-        padding-top: 15px;
+        padding-top: 350px;
     }
 
     .glass-card {
