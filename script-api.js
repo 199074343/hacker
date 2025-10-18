@@ -9,6 +9,8 @@ let currentStage = null;
 let projects = [];
 let stageConfig = {};
 let isSubmittingInvestment = false;
+let autoRefreshTimer = null;  // 自动刷新定时器
+let isInvestModalOpen = false; // 投资弹窗是否打开
 
 // ===== Loading辅助函数 =====
 
@@ -114,6 +116,50 @@ async function fetchProjects() {
         return [];
     } finally {
         hideLoading();
+    }
+}
+
+/**
+ * 启动自动刷新（仅投资期）
+ */
+function startAutoRefresh() {
+    // 如果不是投资期，不启动自动刷新
+    if (currentStage !== 'investment') {
+        console.log('非投资期，不启动自动刷新');
+        return;
+    }
+
+    // 清除现有定时器
+    stopAutoRefresh();
+
+    console.log('启动自动刷新，间隔30秒');
+
+    // 设置30秒定时刷新
+    autoRefreshTimer = setInterval(async () => {
+        // 如果投资弹窗打开，跳过本次刷新
+        if (isInvestModalOpen) {
+            console.log('投资弹窗打开中，跳过本次刷新');
+            return;
+        }
+
+        console.log('执行自动刷新...');
+        try {
+            await fetchProjects();
+            console.log('自动刷新完成');
+        } catch (error) {
+            console.error('自动刷新失败:', error);
+        }
+    }, 30000); // 30秒
+}
+
+/**
+ * 停止自动刷新
+ */
+function stopAutoRefresh() {
+    if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+        console.log('停止自动刷新');
     }
 }
 
@@ -270,6 +316,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     // 绑定事件
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('investForm').addEventListener('submit', handleInvestment);
+
+    // 监听投资弹窗关闭事件，恢复自动刷新
+    const investModalElement = document.getElementById('investModal');
+    investModalElement.addEventListener('hidden.bs.modal', function() {
+        isInvestModalOpen = false;
+        console.log('投资弹窗已关闭，恢复自动刷新');
+    });
 });
 
 /**
@@ -284,6 +337,9 @@ async function initializeData() {
         projectCount: projects.length,
         canInvest: stageConfig[currentStage]?.canInvest
     });
+
+    // 如果是投资期，启动自动刷新
+    startAutoRefresh();
 }
 
 // ===== UI更新函数 =====
@@ -609,6 +665,9 @@ async function showInvestModal(projectId) {
         setInvestButtonState(false);
         submitBtn.classList.remove('disabled');
     }
+
+    // 标记投资弹窗已打开（暂停自动刷新）
+    isInvestModalOpen = true;
 
     const modal = new bootstrap.Modal(document.getElementById('investModal'));
     modal.show();
