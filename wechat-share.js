@@ -12,7 +12,7 @@ const SHARE_CONFIG = {
     title: '高顿GDTech第八届骇客大赛',
     desc: '教育XAI Coding',
     link: window.location.href,
-    imgUrl: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/background.png')
+    imgUrl: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/new_background.png')
 };
 
 /**
