@@ -53,8 +53,17 @@ public class BaiduTongjiService {
 
             try {
                 log.info("初始化账号 {} 的Token...", accountName);
-                getTokenByClientCredentials(accountName);
-                log.info("账号 {} Token初始化成功", accountName);
+
+                // 如果已经配置了access_token，直接使用（来自配置文件）
+                if (credentials.getAccessToken() != null && !credentials.getAccessToken().isEmpty()) {
+                    log.info("账号 {} 已有预配置的access_token，跳过自动获取", accountName);
+                    log.info("账号 {} Token初始化成功（使用预配置Token）", accountName);
+                } else {
+                    // 否则通过client_credentials获取（注意：该方式获取的token无法访问统计数据API）
+                    log.warn("账号 {} 未配置access_token，尝试通过client_credentials获取（可能无法访问统计数据API）", accountName);
+                    getTokenByClientCredentials(accountName);
+                    log.info("账号 {} Token初始化成功", accountName);
+                }
             } catch (Exception e) {
                 log.error("账号 {} Token初始化失败", accountName, e);
             }
@@ -244,7 +253,35 @@ public class BaiduTongjiService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 JsonNode jsonNode = objectMapper.readTree(response.getBody());
 
-                // 检查返回状态
+                // 支持两种响应格式：
+                // 1. 新格式: {"result": {"items": [[dates], [uv_values]]}}
+                // 2. 旧格式: {"header": {"status": 0}, "body": {"data": [[uv, ...]]}}
+
+                // 检查新格式 (result格式)
+                if (jsonNode.has("result")) {
+                    JsonNode result = jsonNode.get("result");
+                    if (result.has("items") && result.get("items").isArray()) {
+                        JsonNode items = result.get("items");
+                        // items[0] 是日期数组, items[1] 是UV数组
+                        if (items.size() >= 2) {
+                            JsonNode uvArray = items.get(1);
+                            int totalUV = 0;
+                            // 累加所有天的UV（跳过"--"等无效值）
+                            for (JsonNode uvNode : uvArray) {
+                                if (uvNode.isArray() && uvNode.size() > 0) {
+                                    JsonNode value = uvNode.get(0);
+                                    if (value.isNumber()) {
+                                        totalUV += value.asInt();
+                                    }
+                                }
+                            }
+                            log.info("获取站点 {} (账号: {}) UV成功: {}", siteId, accountName, totalUV);
+                            return totalUV;
+                        }
+                    }
+                }
+
+                // 检查旧格式 (header格式)
                 if (jsonNode.has("header")) {
                     JsonNode header = jsonNode.get("header");
                     int status = header.get("status").asInt();

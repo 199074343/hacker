@@ -28,15 +28,21 @@ feishu:
       config: ${FEISHU_TABLE_CONFIG:tbl43OV7SBtzFzw1}
 
 # 百度统计配置（支持多账号）
+# 注意：百度统计API需要通过OAuth2.0完整授权流程获取access_token
+# client_credentials方式获取的token无法访问统计数据API
 baidu:
   tongji:
     # UV同步间隔（分钟）
     sync-interval: 10
-    # 多个百度统计账号配置（只需要配置client_id和client_secret，token会自动生成）
+    # 多个百度统计账号配置
+    # 推荐：直接配置已授权的access_token和refresh_token
     accounts:
       account1:
         client-id: ${BAIDU_ACCOUNT1_CLIENT_ID:pSPZrp0fs3x02wvG0V8WnFByH0j3TekZ}
         client-secret: ${BAIDU_ACCOUNT1_CLIENT_SECRET:HiQPA3MFKp6ayVq60SnYu4QOaDfEaLix}
+        # 使用已授权的token（来自zeabur示例项目）
+        access-token: ${BAIDU_ACCOUNT1_ACCESS_TOKEN:121.a5389f189bd678178900fbaf180eddc9.YsUSJDM6bXRVRpah7mxH14GpE53P8bV10uNrkbA.EPrJJA}
+        refresh-token: ${BAIDU_ACCOUNT1_REFRESH_TOKEN:122.051c0599eb04fa5b60687e85ac0b387d.YsW9Rr6K0_cKFrQE72ViyfWlObEDWKHkwP2Sryn.uw_Jag}
       account2:
         client-id: ${BAIDU_ACCOUNT2_CLIENT_ID:9WdFRWt8Db2aGZVPcCVXBgIYmOQUXTEH}
         client-secret: ${BAIDU_ACCOUNT2_CLIENT_SECRET:tRiVxGdREeQbowK8VUKwA7KLrkZVmP3V}
