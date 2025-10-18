@@ -91,18 +91,22 @@ async function fetchCurrentStage() {
 
 /**
  * 获取所有项目列表
+ * @param {boolean} silent - 是否静默模式（不显示loading，不打印详细日志）
  */
-async function fetchProjects() {
+async function fetchProjects(silent = false) {
     try {
-        showLoading();
+        if (!silent) {
+            showLoading();
+        }
+
         const response = await fetch(`${API_BASE_URL}/projects`);
         const result = await response.json();
 
         if (result.code === 200) {
             projects = result.data;
 
-            // 如果是投资期或结束期，打印排名详情
-            if (currentStage === 'investment' || currentStage === 'ended') {
+            // 如果是投资期或结束期，打印排名详情（静默模式跳过）
+            if (!silent && (currentStage === 'investment' || currentStage === 'ended')) {
                 printRankingDetails(projects);
             }
 
@@ -115,7 +119,9 @@ async function fetchProjects() {
         console.error('获取项目列表异常:', error);
         return [];
     } finally {
-        hideLoading();
+        if (!silent) {
+            hideLoading();
+        }
     }
 }
 
@@ -142,10 +148,11 @@ function startAutoRefresh() {
             return;
         }
 
-        console.log('执行自动刷新...');
+        console.log('执行静默刷新...');
         try {
-            await fetchProjects();
-            console.log('自动刷新完成');
+            await fetchProjects(true);  // 静默模式：不显示loading，不打印详细日志
+            renderProjects();  // 重新渲染项目列表
+            console.log('静默刷新完成');
         } catch (error) {
             console.error('自动刷新失败:', error);
         }
