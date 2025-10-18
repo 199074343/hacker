@@ -905,11 +905,9 @@ function backToMainPage() {
  * 退出登录
  */
 function handleLogout() {
-    if (confirm('确定要退出登录吗？')) {
-        clearLoginState();
-        backToMainPage();
-        showToast('已退出登录', 'info');
-    }
+    clearLoginState();
+    backToMainPage();
+    showToast('已退出登录', 'success');
 }
 
 /**
