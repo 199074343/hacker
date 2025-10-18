@@ -378,6 +378,7 @@ public class HackathonService {
     public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
         try {
             long startTime = System.currentTimeMillis();
+            long stepStart;
 
             // 优化：跳过阶段检查以减少飞书API调用（已在前端控制）
             // CompetitionStage stage = getCurrentStage();
@@ -385,7 +386,8 @@ public class HackathonService {
             //     throw new IllegalStateException("当前阶段不可投资，请见大赛规则");
             // }
 
-            // 优化：并发获取投资人信息和项目信息
+            // 步骤1：并发获取投资人信息和项目信息
+            stepStart = System.currentTimeMillis();
             CompletableFuture<Investor> investorFuture = CompletableFuture.supplyAsync(
                     () -> getInvestorByUsername(investorUsername), apiExecutor);
 
@@ -399,8 +401,8 @@ public class HackathonService {
             Investor investor = investorFuture.get();
             Project project = projectFuture.get();
 
-            long fetchTime = System.currentTimeMillis() - startTime;
-            log.debug("并发获取投资人和项目信息耗时: {}ms", fetchTime);
+            long step1Time = System.currentTimeMillis() - stepStart;
+            log.info("[投资性能] 步骤1-并发查询投资人和项目耗时: {}ms", step1Time);
 
             if (investor == null) {
                 throw new IllegalStateException("投资人不存在");
@@ -425,7 +427,8 @@ public class HackathonService {
             // 计算新的剩余额度
             Integer newRemaining = remaining - amount;
 
-            // 写入飞书投资记录表
+            // 步骤2：写入飞书投资记录表
+            stepStart = System.currentTimeMillis();
             Map<String, Object> investmentFields = new HashMap<>();
             investmentFields.put("投资人账号", investorUsername);
             investmentFields.put("项目ID", projectId);
@@ -435,21 +438,33 @@ public class HackathonService {
             investmentFields.put("项目名称", project.getName());
 
             String recordId = feishuService.createRecord(feishuConfig.getInvestmentsTableId(), investmentFields);
+            long step2Time = System.currentTimeMillis() - stepStart;
+            log.info("[投资性能] 步骤2-创建投资记录耗时: {}ms", step2Time);
 
-            // 更新飞书投资人表的剩余额度
+            // 步骤3：查询投资人record_id（用于更新剩余额度）
+            stepStart = System.currentTimeMillis();
             String investorsTableId = feishuConfig.getInvestorsTableId();
             Map<String, Object> investorRecord = findRecordByField(investorsTableId, "账号", investorUsername);
+            long step3Time = System.currentTimeMillis() - stepStart;
+            log.info("[投资性能] 步骤3-查询投资人record_id耗时: {}ms (重复查询！)", step3Time);
+
+            // 步骤4：更新飞书投资人表的剩余额度
             if (investorRecord != null) {
+                stepStart = System.currentTimeMillis();
                 String investorRecordId = (String) investorRecord.get("record_id");
                 Map<String, Object> updateFields = new HashMap<>();
                 updateFields.put("剩余额度", newRemaining);
                 feishuService.updateRecord(investorsTableId, investorRecordId, updateFields);
+                long step4Time = System.currentTimeMillis() - stepStart;
+                log.info("[投资性能] 步骤4-更新投资人剩余额度耗时: {}ms", step4Time);
                 log.debug("更新投资人{}剩余额度: {} -> {}", investorUsername, remaining, newRemaining);
             }
 
             long totalTime = System.currentTimeMillis() - startTime;
-            log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}, 总耗时: {}ms (并发查询耗时: {}ms)",
-                    investorUsername, amount, projectId, recordId, totalTime, fetchTime);
+            log.info("[投资性能] 总耗时: {}ms (步骤1:{}ms + 步骤2:{}ms + 步骤3:{}ms + 步骤4:约{}ms)",
+                    totalTime, step1Time, step2Time, step3Time, totalTime - step1Time - step2Time - step3Time);
+            log.info("投资成功: {} 投资 {} 万元给项目 {}, recordId: {}",
+                    investorUsername, amount, projectId, recordId);
             return true;
         } catch (Exception e) {
             log.error("投资失败", e);
