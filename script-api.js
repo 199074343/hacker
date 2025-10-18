@@ -533,7 +533,7 @@ async function handleLogin(e) {
 /**
  * 显示投资模态框
  */
-function showInvestModal(projectId) {
+async function showInvestModal(projectId) {
     // 调试日志
     console.log('投资按钮点击 - 当前阶段:', currentStage, '是否可投资:', stageConfig[currentStage]?.canInvest);
 
@@ -556,6 +556,34 @@ function showInvestModal(projectId) {
         return;
     }
 
+    // 【方案3前端优化】：点击投资按钮时，先实时校验剩余额度
+    // 由于后端异步更新额度，前端缓存的currentUser.remainingAmount可能过时
+    console.log('正在校验剩余额度...');
+    showToast('正在校验剩余额度...', 'info');
+
+    try {
+        const latestInvestor = await fetchInvestorInfo(currentUser.username);
+        if (latestInvestor) {
+            currentUser = latestInvestor;
+            console.log('最新剩余额度:', currentUser.remainingAmount);
+        } else {
+            showToast('获取投资人信息失败，请重新登录', 'error');
+            return;
+        }
+    } catch (error) {
+        console.error('校验剩余额度失败:', error);
+        showToast('网络异常，请稍后重试', 'error');
+        return;
+    }
+
+    // 校验通过后，检查余额是否充足
+    if (currentUser.remainingAmount <= 0) {
+        showToast('您的剩余额度已用完，无法继续投资', 'warning');
+        // 刷新页面数据，让投资按钮置灰
+        renderProjects();
+        return;
+    }
+
     const investInfo = document.getElementById('investInfo');
     investInfo.innerHTML = `
         <div class="glass-card">
@@ -569,7 +597,7 @@ function showInvestModal(projectId) {
     document.getElementById('investAmount').max = currentUser.remainingAmount;
     document.getElementById('investForm').dataset.projectId = projectId;
 
-    // 如果余额为0，禁用投资按钮
+    // 如果余额为0，禁用投资按钮（双重保险）
     const submitBtn = document.getElementById('investSubmitBtn');
     if (currentUser.remainingAmount <= 0) {
         submitBtn.disabled = true;

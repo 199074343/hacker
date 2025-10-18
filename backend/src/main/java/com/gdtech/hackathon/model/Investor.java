@@ -19,6 +19,12 @@ public class Investor {
     private Long id;
 
     /**
+     * 飞书记录ID - 用于更新操作，不返回给前端
+     */
+    @JsonIgnore
+    private String recordId;
+
+    /**
      * 账号（4位数字）
      */
     private String username;
