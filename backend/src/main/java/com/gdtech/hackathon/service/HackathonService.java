@@ -367,7 +367,7 @@ public class HackathonService {
 
     /**
      * 执行投资
-     * 优化：并发获取投资人和项目信息，减少API调用耗时
+     * 方案5优化：前端传递姓名，完全消除查询投资人和项目的步骤1
      * 投资成功后清除相关缓存 (afterInvocation=true确保在方法执行后清除)
      */
     @Caching(evict = {
@@ -375,7 +375,8 @@ public class HackathonService {
             @CacheEvict(value = "project", key = "#projectId", beforeInvocation = false),
             @CacheEvict(value = "projects", allEntries = true, beforeInvocation = false)
     })
-    public synchronized boolean invest(String investorUsername, Long projectId, Integer amount) {
+    public synchronized boolean invest(String investorUsername, String investorName,
+                                       Long projectId, String projectName, Integer amount) {
         try {
             long startTime = System.currentTimeMillis();
             long stepStart;
@@ -386,34 +387,18 @@ public class HackathonService {
             //     throw new IllegalStateException("当前阶段不可投资，请见大赛规则");
             // }
 
-            // 步骤1：并发获取投资人信息和项目信息
+            // 【方案5优化】步骤1已完全消除：前端传递姓名，无需查询投资人和项目
+            log.info("[投资性能] 方案5生效 - 跳过步骤1查询，直接使用前端传递的姓名");
+
+            // 步骤1.5：仅查询投资人的recordId和剩余额度（轻量查询）
             stepStart = System.currentTimeMillis();
-            CompletableFuture<Investor> investorFuture = CompletableFuture.supplyAsync(
-                    () -> getInvestorByUsername(investorUsername), apiExecutor);
-
-            CompletableFuture<Project> projectFuture = CompletableFuture.supplyAsync(
-                    () -> getProjectById(projectId), apiExecutor);
-
-            // 等待两个API调用完成
-            CompletableFuture.allOf(investorFuture, projectFuture).join();
-
-            // 获取结果
-            Investor investor = investorFuture.get();
-            Project project = projectFuture.get();
-
+            Investor investor = getInvestorByUsername(investorUsername);
             long step1Time = System.currentTimeMillis() - stepStart;
-            log.info("[投资性能] 步骤1-并发查询投资人和项目耗时: {}ms", step1Time);
+            log.info("[投资性能] 步骤1-轻量查询投资人额度和recordId耗时: {}ms", step1Time);
 
             if (investor == null) {
                 throw new IllegalStateException("投资人不存在");
             }
-
-            if (project == null) {
-                throw new IllegalStateException("项目不存在");
-            }
-
-            // 晋级检查已在前端处理，后端跳过以减少API调用
-            // 如需后端检查，可在项目表添加"是否晋级"字段
 
             // 检查剩余额度（从飞书表读取）
             Integer remaining = investor.getRemainingAmount();
@@ -427,7 +412,7 @@ public class HackathonService {
             // 计算新的剩余额度
             final Integer newRemaining = remaining - amount;
 
-            // 【方案1优化】：使用步骤1获取的recordId，消除重复查询
+            // 使用步骤1获取的recordId
             final String investorRecordId = investor.getRecordId();
             if (investorRecordId == null || investorRecordId.isEmpty()) {
                 log.warn("投资人{}的recordId为空，投资可能失败", investorUsername);
@@ -438,13 +423,14 @@ public class HackathonService {
             stepStart = System.currentTimeMillis();
 
             // 步骤2：创建投资记录（同步执行，确保成功）
+            // 【方案5优化】：使用前端传递的姓名，无需从对象中获取
             Map<String, Object> investmentFields = new HashMap<>();
             investmentFields.put("投资人账号", investorUsername);
             investmentFields.put("项目ID", projectId);
             investmentFields.put("投资金额", amount);
             investmentFields.put("投资时间", System.currentTimeMillis());  // 使用Unix时间戳（毫秒）
-            investmentFields.put("投资人姓名", investor.getName());
-            investmentFields.put("项目名称", project.getName());
+            investmentFields.put("投资人姓名", investorName);  // 使用前端传递的姓名
+            investmentFields.put("项目名称", projectName);      // 使用前端传递的名称
 
             CompletableFuture<String> createRecordFuture = CompletableFuture.supplyAsync(
                     () -> feishuService.createRecord(feishuConfig.getInvestmentsTableId(), investmentFields),

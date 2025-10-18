@@ -126,7 +126,9 @@ public class HackathonController {
         try {
             boolean success = hackathonService.invest(
                     request.getInvestorUsername(),
+                    request.getInvestorName(),
                     request.getProjectId(),
+                    request.getProjectName(),
                     request.getAmount()
             );
 

@@ -28,4 +28,16 @@ public class InvestmentRequest {
      */
     @NotNull(message = "投资人账号不能为空")
     private String investorUsername;
+
+    /**
+     * 投资人姓名（前端传递，避免后端重复查询）
+     */
+    @NotNull(message = "投资人姓名不能为空")
+    private String investorName;
+
+    /**
+     * 项目名称（前端传递，避免后端重复查询）
+     */
+    @NotNull(message = "项目名称不能为空")
+    private String projectName;
 }

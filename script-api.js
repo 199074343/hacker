@@ -225,7 +225,7 @@ async function fetchInvestorInfo(username) {
 /**
  * 执行投资
  */
-async function invest(investorUsername, projectId, amount) {
+async function invest(investorUsername, investorName, projectId, projectName, amount) {
     try {
         showLoading();
         const response = await fetch(`${API_BASE_URL}/invest`, {
@@ -235,7 +235,9 @@ async function invest(investorUsername, projectId, amount) {
             },
             body: JSON.stringify({
                 investorUsername,
+                investorName,
                 projectId,
+                projectName,
                 amount
             })
         });
@@ -631,6 +633,13 @@ async function handleInvestment(e) {
         return;
     }
 
+    // 【方案5优化】：查找项目对象，获取项目名称
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        showToast('未找到项目信息，请重试', 'error');
+        return;
+    }
+
     if (!Number.isFinite(amount) || amount <= 0) {
         showToast('请输入有效的投资金额', 'error');
         return;
@@ -645,7 +654,14 @@ async function handleInvestment(e) {
     setInvestButtonState(true);
 
     try {
-        const result = await invest(currentUser.username, projectId, amount);
+        // 【方案5优化】：传递投资人姓名和项目名称，后端无需查询
+        const result = await invest(
+            currentUser.username,
+            currentUser.name,
+            projectId,
+            project.name,
+            amount
+        );
 
         if (result.success) {
             showToast(`成功投资${amount}万元！`, 'success');
