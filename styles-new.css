@@ -5,16 +5,22 @@
     box-sizing: border-box;
 }
 
+html {
+    height: 100%;
+    min-height: 100%;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #000000;
     background-image: url('./new_background.png');
-    background-position: center top 50px;
+    background-position: center 50px;
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: cover;
     -webkit-background-size: cover;
-    min-height: 100vh;
+    min-height: 100%;
+    height: 100%;
     position: relative;
     overflow-x: hidden;
 }
@@ -672,12 +678,19 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+    html {
+        min-height: 100%;
+        height: auto;
+    }
+
     body {
-        background-attachment: scroll;
-        background-position: center top;
+        background-attachment: scroll !important;
+        background-position: center 0;
         background-repeat: no-repeat;
         background-size: contain;
         -webkit-background-size: contain;
+        min-height: 100%;
+        height: auto;
     }
 
     .banner-container {
@@ -723,12 +736,19 @@ body {
 }
 
 @media (max-width: 576px) {
+    html {
+        min-height: 100%;
+        height: auto;
+    }
+
     body {
-        background-attachment: scroll;
-        background-position: center top;
+        background-attachment: scroll !important;
+        background-position: center 0;
         background-repeat: no-repeat;
         background-size: 100% auto;
         -webkit-background-size: 100% auto;
+        min-height: 100%;
+        height: auto;
     }
 
     .banner-container {
