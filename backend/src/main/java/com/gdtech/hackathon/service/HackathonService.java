@@ -898,8 +898,28 @@ public class HackathonService {
                 log.debug("锁定期排名计算完成，晋级项目{}个，非晋级项目{}个", qualifiedProjects.size(), nonQualifiedProjects.size());
             }
 
-        } else if (stage == CompetitionStage.INVESTMENT || stage == CompetitionStage.ENDED) {
-            // 投资期/结束期：晋级名单固定，使用加权排名算法
+        } else if (stage == CompetitionStage.ENDED) {
+            // 结束期：数据和排名完全冻结，不再重新计算
+            log.debug("结束期：排名已冻结，不重新计算");
+
+            // 标记晋级状态（从配置表读取）
+            List<Long> qualifiedProjectIds = (configRecords != null)
+                    ? resolveQualifiedProjectIdsFromData(projects, qualifiedCount, configRecords)
+                    : resolveQualifiedProjectIds(projects, qualifiedCount);
+
+            if (!qualifiedProjectIds.isEmpty()) {
+                final Set<Long> finalQualifiedIds = new LinkedHashSet<>(qualifiedProjectIds);
+                projects.forEach(p -> p.setQualified(finalQualifiedIds.contains(p.getId())));
+            }
+
+            // 保持项目当前顺序和排名，不做任何排序
+            // 排名应该由数据源（飞书表格）的顺序决定
+            for (int i = 0; i < projects.size(); i++) {
+                projects.get(i).setRank(i + 1);
+            }
+
+        } else if (stage == CompetitionStage.INVESTMENT) {
+            // 投资期：晋级名单固定，使用加权排名算法
 
             // 步骤1：获取晋级项目ID列表
             List<Long> qualifiedProjectIds = (configRecords != null)

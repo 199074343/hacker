@@ -2,8 +2,10 @@ package com.gdtech.hackathon.schedule;
 
 import com.gdtech.hackathon.config.BaiduConfig;
 import com.gdtech.hackathon.config.FeishuConfig;
+import com.gdtech.hackathon.model.CompetitionStage;
 import com.gdtech.hackathon.service.BaiduTongjiService;
 import com.gdtech.hackathon.service.FeishuService;
+import com.gdtech.hackathon.service.HackathonService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -27,17 +29,20 @@ public class UVSyncScheduler {
     private final FeishuService feishuService;
     private final FeishuConfig feishuConfig;
     private final BaiduConfig baiduConfig;
+    private final HackathonService hackathonService;
 
     public UVSyncScheduler(
             BaiduTongjiService baiduTongjiService,
             FeishuService feishuService,
             FeishuConfig feishuConfig,
-            BaiduConfig baiduConfig
+            BaiduConfig baiduConfig,
+            HackathonService hackathonService
     ) {
         this.baiduTongjiService = baiduTongjiService;
         this.feishuService = feishuService;
         this.feishuConfig = feishuConfig;
         this.baiduConfig = baiduConfig;
+        this.hackathonService = hackathonService;
     }
 
     /**
@@ -52,6 +57,13 @@ public class UVSyncScheduler {
     })
     public void syncAllProjectUV() {
         try {
+            // 检查当前阶段，如果是结束阶段则跳过同步
+            CompetitionStage currentStage = hackathonService.getCurrentStage();
+            if (currentStage == CompetitionStage.ENDED) {
+                log.info("当前为结束阶段，跳过UV数据同步");
+                return;
+            }
+
             log.info("开始同步项目UV数据...");
 
             // 获取所有项目
