@@ -11,7 +11,9 @@ body {
     background-image: url('./new_background.png');
     background-position: center top 50px;
     background-attachment: fixed;
+    background-repeat: no-repeat;
     background-size: cover;
+    -webkit-background-size: cover;
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
@@ -669,7 +671,9 @@ body {
     body {
         background-attachment: scroll;
         background-position: center top;
+        background-repeat: no-repeat;
         background-size: contain;
+        -webkit-background-size: contain;
     }
 
     .banner-container {
@@ -718,7 +722,9 @@ body {
     body {
         background-attachment: scroll;
         background-position: center top;
+        background-repeat: no-repeat;
         background-size: 100% auto;
+        -webkit-background-size: 100% auto;
     }
 
     .banner-container {
