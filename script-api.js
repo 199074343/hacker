@@ -410,14 +410,16 @@ function renderProjectList(containerId, projectList, isQualified) {
         });
 
     container.innerHTML = sortedList.map((project, index) => {
-        const rankClass = project.rank <= 3 ? 'top-3' : '';
+        // 非晋级区排名从16开始
+        const displayRank = isQualified ? project.rank : (16 + index);
+        const rankClass = displayRank <= 3 ? 'top-3' : '';
         const canInvest = isQualified && stageConfig[currentStage]?.canInvest;
         const showInvestButton = isQualified && canInvest;
 
         return `
             <div class="project-card position-relative fade-in" style="animation-delay: ${index * 0.1}s">
                 <div class="project-rank ${rankClass}">
-                    #${project.rank}
+                    #${displayRank}
                 </div>
 
                 <div class="row align-items-center">
