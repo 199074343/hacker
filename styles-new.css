@@ -666,6 +666,11 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+    body {
+        background-attachment: scroll;
+        background-position: center top 50px;
+    }
+
     .banner-container {
         margin-top: 200px;
     }
@@ -709,6 +714,11 @@ body {
 }
 
 @media (max-width: 576px) {
+    body {
+        background-attachment: scroll;
+        background-position: center top 30px;
+    }
+
     .banner-container {
         margin-top: 185px;
     }
