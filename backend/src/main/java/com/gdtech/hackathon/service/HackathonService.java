@@ -927,8 +927,12 @@ public class HackathonService {
             final Set<Long> finalQualifiedIds = new LinkedHashSet<>(qualifiedProjectIds);
             projects.forEach(p -> p.setQualified(finalQualifiedIds.contains(p.getId())));
 
-            // 步骤3：按UV排序，计算UV排名分数
-            List<Project> uvSorted = new ArrayList<>(projects);
+            // 步骤3：只在晋级区的15个队伍内按UV排序，计算UV排名分数
+            List<Project> qualifiedProjectsForRanking = projects.stream()
+                    .filter(Project::getQualified)
+                    .collect(Collectors.toList());
+
+            List<Project> uvSorted = new ArrayList<>(qualifiedProjectsForRanking);
             uvSorted.sort((a, b) -> {
                 int cmp = Long.compare(b.getUv(), a.getUv());
                 if (cmp != 0) return cmp;
@@ -940,16 +944,16 @@ public class HackathonService {
             Map<Long, Integer> uvRankMap = new HashMap<>();
             Map<Long, Double> uvScores = new HashMap<>();
             for (int i = 0; i < uvSorted.size(); i++) {
-                int rank = i + 1; // UV排名（1-based）
+                int rank = i + 1; // UV排名（1-15）
                 Project p = uvSorted.get(i);
-                // UV排名分数 = (队伍总数+1-UV排名) / 队伍总数 * 100
-                double score = (double)(totalTeams + 1 - rank) / totalTeams * 100;
+                // 新公式：UV分数 = (16 - UV排名) / 15
+                double score = (double)(16 - rank) / 15;
                 uvRankMap.put(p.getId(), rank);
                 uvScores.put(p.getId(), score);
             }
 
-            // 步骤4：按投资额排序，计算投资额排名分数
-            List<Project> investmentSorted = new ArrayList<>(projects);
+            // 步骤4：只在晋级区的15个队伍内按投资额排序，计算投资额排名分数
+            List<Project> investmentSorted = new ArrayList<>(qualifiedProjectsForRanking);
             investmentSorted.sort((a, b) -> {
                 int cmp = Integer.compare(b.getInvestment(), a.getInvestment());
                 if (cmp != 0) return cmp;
@@ -961,22 +965,22 @@ public class HackathonService {
             Map<Long, Integer> investmentRankMap = new HashMap<>();
             Map<Long, Double> investmentScores = new HashMap<>();
             for (int i = 0; i < investmentSorted.size(); i++) {
-                int rank = i + 1; // 投资额排名（1-based）
+                int rank = i + 1; // 投资额排名（1-15）
                 Project p = investmentSorted.get(i);
-                // 投资额排名分数 = (队伍总数+1-投资额排名) / 队伍总数 * 100
-                double score = (double)(totalTeams + 1 - rank) / totalTeams * 100;
+                // 新公式：投资额分数 = (16 - 投资额排名) / 15
+                double score = (double)(16 - rank) / 15;
                 investmentRankMap.put(p.getId(), rank);
                 investmentScores.put(p.getId(), score);
             }
 
-            // 步骤5：计算加权分数并设置到项目
-            projects.forEach(p -> {
+            // 步骤5：只对晋级项目计算加权分数
+            qualifiedProjectsForRanking.forEach(p -> {
                 int uvRank = uvRankMap.get(p.getId());
                 int investRank = investmentRankMap.get(p.getId());
                 double uvScore = uvScores.get(p.getId());
                 double investScore = investmentScores.get(p.getId());
-                // 加权分数 = UV排名分数*40% + 投资额排名分数*60%
-                double weightedScore = uvScore * 0.4 + investScore * 0.6;
+                // 新加权公式：加权分数 = UV分数*20% + 投资额分数*80%
+                double weightedScore = uvScore * 0.2 + investScore * 0.8;
                 p.setWeightedScore(weightedScore);
             });
 
@@ -1023,7 +1027,7 @@ public class HackathonService {
             projects.addAll(qualifiedProjects);
             projects.addAll(nonQualifiedProjects);
 
-            log.debug("投资期排名计算完成，使用加权算法：UV排名分数*40% + 投资额排名分数*60%");
+            log.debug("投资期排名计算完成，使用加权算法：(16-UV排名)/15*0.2 + (16-投资额排名)/15*0.8（仅晋级区15队）");
         }
     }
 

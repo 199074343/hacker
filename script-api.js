@@ -175,41 +175,44 @@ function stopAutoRefresh() {
  */
 function printRankingDetails(projects) {
     console.log('%c================== 投资期排名计算详情 ==================', 'color: #00f2fe; font-size: 16px; font-weight: bold');
-    console.log(`总队伍数: ${projects.length}`);
+
+    // 只在晋级区的15个队伍内计算排名
+    const qualifiedProjects = projects.filter(p => p.qualified);
+    console.log(`晋级区队伍数: ${qualifiedProjects.length}`);
     console.log('');
 
-    // 按UV排序
-    const uvSorted = [...projects].sort((a, b) => {
+    // 按UV排序（仅晋级区）
+    const uvSorted = [...qualifiedProjects].sort((a, b) => {
         if (b.uv !== a.uv) return b.uv - a.uv;
         return (a.teamNumber || '999').localeCompare(b.teamNumber || '999');
     });
 
-    // 按投资额排序
-    const investmentSorted = [...projects].sort((a, b) => {
+    // 按投资额排序（仅晋级区）
+    const investmentSorted = [...qualifiedProjects].sort((a, b) => {
         if (b.investment !== a.investment) return b.investment - a.investment;
         return (a.teamNumber || '999').localeCompare(b.teamNumber || '999');
     });
 
-    // 计算排名
+    // 计算排名（仅晋级区）
     const uvRankMap = {};
     const investRankMap = {};
     uvSorted.forEach((p, i) => { uvRankMap[p.id] = i + 1; });
     investmentSorted.forEach((p, i) => { investRankMap[p.id] = i + 1; });
 
-    // 打印每个项目的详细信息
-    projects.forEach(p => {
-        const totalTeams = projects.length;
+    // 打印每个晋级项目的详细信息
+    qualifiedProjects.forEach(p => {
         const uvRank = uvRankMap[p.id];
         const investRank = investRankMap[p.id];
-        const uvScore = (totalTeams + 1 - uvRank) / totalTeams * 100;
-        const investScore = (totalTeams + 1 - investRank) / totalTeams * 100;
+        // 新公式: (16 - UV排名) / 15 * 0.2 + (16 - 投资额排名) / 15 * 0.8
+        const uvScore = (16 - uvRank) / 15;
+        const investScore = (16 - investRank) / 15;
         const weightedScore = uvScore * 0.2 + investScore * 0.8;
 
         console.log(`%c项目ID: ${p.id}, 名称: ${p.name}, 队伍编号: ${p.teamNumber}`, 'color: #4facfe; font-weight: bold');
-        console.log(`  UV: ${p.uv}, UV排名: ${uvRank}, UV排名分数: ${uvScore.toFixed(2)}`);
-        console.log(`  投资额: ${p.investment}万元, 投资额排名: ${investRank}, 投资额排名分数: ${investScore.toFixed(2)}`);
-        console.log(`  最终加权分数: ${weightedScore.toFixed(2)} (${uvScore.toFixed(2)}*0.2 + ${investScore.toFixed(2)}*0.8)`);
-        console.log(`  后端返回的加权分数: ${p.weightedScore?.toFixed(2) || 'N/A'}`);
+        console.log(`  UV: ${p.uv}, UV排名: ${uvRank}/15, UV分数: ${uvScore.toFixed(4)}`);
+        console.log(`  投资额: ${p.investment}万元, 投资额排名: ${investRank}/15, 投资额分数: ${investScore.toFixed(4)}`);
+        console.log(`  最终加权分数: ${weightedScore.toFixed(4)} (${uvScore.toFixed(4)}*0.2 + ${investScore.toFixed(4)}*0.8)`);
+        console.log(`  后端返回的加权分数: ${p.weightedScore?.toFixed(4) || 'N/A'}`);
         console.log('---');
     });
 
@@ -220,7 +223,7 @@ function printRankingDetails(projects) {
         console.log(`  加权分数: ${p.weightedScore?.toFixed(2) || 'N/A'}, UV: ${p.uv}, 投资: ${p.investment}万元`);
     });
     console.log('');
-    console.log('%c排名算法: UV排名20%权重 + 投资额排名80%权重', 'color: #4facfe; font-style: italic');
+    console.log('%c排名算法: (16-UV排名)/15*0.2 + (16-投资额排名)/15*0.8 (仅晋级区15队计算)', 'color: #4facfe; font-style: italic');
 }
 
 /**
