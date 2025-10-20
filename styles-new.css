@@ -668,7 +668,8 @@ body {
 @media (max-width: 768px) {
     body {
         background-attachment: scroll;
-        background-position: center top 50px;
+        background-position: center top;
+        background-size: contain;
     }
 
     .banner-container {
@@ -716,7 +717,8 @@ body {
 @media (max-width: 576px) {
     body {
         background-attachment: scroll;
-        background-position: center top 30px;
+        background-position: center top;
+        background-size: 100% auto;
     }
 
     .banner-container {
