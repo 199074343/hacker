@@ -337,10 +337,14 @@ body {
     right: -5px;
     background: #ff6b6b;
     color: white;
-    font-size: 0.7rem;
-    padding: 1px 4px;
-    border-radius: 8px;
+    font-size: 0.65rem;
+    padding: 2px 5px;
+    border-radius: 10px;
     font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 /* 操作按钮 */
