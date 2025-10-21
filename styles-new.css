@@ -700,13 +700,13 @@ body {
 
     .background-image {
         position: absolute;
-        top: 0;
+        top: 60px;
         left: 50%;
         transform: translateX(-50%);
         width: auto;
         height: auto;
         min-width: 100%;
-        min-height: 100vh;
+        min-height: calc(100vh - 60px);
         max-width: none;
         object-fit: contain;
         object-position: center top;
@@ -767,7 +767,7 @@ body {
 
     .background-image {
         position: absolute;
-        top: 0;
+        top: 60px;
         left: 50%;
         transform: translateX(-50%);
         width: 100%;
