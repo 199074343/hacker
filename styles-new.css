@@ -348,7 +348,7 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .investor-avatar:hover {
@@ -363,13 +363,14 @@ body {
     background: #ff6b6b;
     color: white;
     font-size: 0.65rem;
-    padding: 2px 5px;
+    padding: 2px 6px;
     border-radius: 10px;
     font-weight: bold;
-    min-width: 20px;
+    min-width: 24px;
     text-align: center;
     line-height: 1.2;
     white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* 操作按钮 */
