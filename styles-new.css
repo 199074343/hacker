@@ -35,6 +35,15 @@ body {
     pointer-events: none;
 }
 
+/* 桌面端显示PC背景图，隐藏移动端背景图 */
+.background-image-desktop {
+    display: block;
+}
+
+.background-image-mobile {
+    display: none;
+}
+
 /* 背景图片覆盖层 - 轻微暗化以提高文字可读性 */
 .background-overlay {
     position: fixed;
@@ -698,6 +707,15 @@ body {
         height: auto;
     }
 
+    /* 移动端隐藏PC背景图，显示移动端背景图 */
+    .background-image-desktop {
+        display: none;
+    }
+
+    .background-image-mobile {
+        display: block;
+    }
+
     .background-image {
         position: absolute;
         top: 60px;
@@ -763,6 +781,15 @@ body {
     body {
         min-height: 100%;
         height: auto;
+    }
+
+    /* 移动端隐藏PC背景图，显示移动端背景图 */
+    .background-image-desktop {
+        display: none;
+    }
+
+    .background-image-mobile {
+        display: block;
     }
 
     .background-image {
