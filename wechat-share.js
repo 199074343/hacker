@@ -12,7 +12,7 @@ const SHARE_CONFIG = {
     title: '高顿GDTech第八届骇客大赛',
     desc: '教育XAI Coding',
     link: window.location.href.split('#')[0],  // 去掉#及其后面的内容
-    imgUrl: 'https://hackathon.gaodun.com/share-icon.jpg'  // 使用完整的绝对URL（300x300，25KB）
+    imgUrl: 'https://hackathon.gaodun.com/share-icon.jpg?v=20251021'  // 使用完整的绝对URL（300x300，25KB），加版本号避免缓存
 };
 
 /**
