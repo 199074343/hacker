@@ -701,13 +701,14 @@ body {
     .background-image {
         position: absolute;
         top: 0;
-        left: 0;
-        transform: none;
-        width: 100%;
-        height: 100vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        height: auto;
+        min-width: 100%;
         min-height: 100vh;
-        max-width: 100%;
-        object-fit: cover;
+        max-width: none;
+        object-fit: contain;
         object-position: center top;
     }
 
@@ -767,13 +768,13 @@ body {
     .background-image {
         position: absolute;
         top: 0;
-        left: 0;
-        transform: none;
+        left: 50%;
+        transform: translateX(-50%);
         width: 100%;
-        height: 100vh;
-        min-height: 100vh;
+        height: auto;
+        min-height: 0;
         max-width: 100%;
-        object-fit: cover;
+        object-fit: contain;
         object-position: center top;
     }
 
