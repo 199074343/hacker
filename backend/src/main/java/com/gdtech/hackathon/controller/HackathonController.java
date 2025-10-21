@@ -222,6 +222,26 @@ public class HackathonController {
      * @param url 当前页面URL（必填，不包含#及其后面部分）
      * @return 微信签名配置 {appId, timestamp, nonceStr, signature}
      */
+    /**
+     * 获取服务器出口IP地址（用于配置微信IP白名单）
+     */
+    @GetMapping("/server-ip")
+    public ApiResponse<Map<String, String>> getServerIp() {
+        try {
+            log.info("获取服务器出口IP");
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            String ip = restTemplate.getForObject("https://api.ipify.org?format=text", String.class);
+            Map<String, String> result = new HashMap<>();
+            result.put("ip", ip);
+            result.put("message", "请将此IP地址添加到微信公众号后台的IP白名单中");
+            log.info("服务器出口IP: {}", ip);
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("获取服务器IP失败", e);
+            return ApiResponse.error("获取服务器IP失败: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/wechat/signature")
     public ApiResponse<Map<String, String>> getWeChatSignature(@RequestParam String url) {
         try {
