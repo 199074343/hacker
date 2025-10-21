@@ -21,7 +21,7 @@ body {
 
 /* 使用img标签作为背景（最可靠的iOS方案） */
 .background-image {
-    position: fixed;
+    position: absolute;
     top: 50px;
     left: 50%;
     transform: translateX(-50%);
@@ -718,7 +718,7 @@ body {
     }
 
     .background-image {
-        position: fixed;
+        position: absolute;
         top: 50px;
         left: 50%;
         transform: translateX(-50%);
@@ -794,7 +794,7 @@ body {
     }
 
     .background-image {
-        position: fixed;
+        position: absolute;
         top: 50px;
         left: 50%;
         transform: translateX(-50%);
