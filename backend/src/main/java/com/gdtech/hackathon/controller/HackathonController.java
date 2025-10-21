@@ -7,6 +7,7 @@ import com.gdtech.hackathon.model.CompetitionStage;
 import com.gdtech.hackathon.model.Investor;
 import com.gdtech.hackathon.model.Project;
 import com.gdtech.hackathon.service.HackathonService;
+import com.gdtech.hackathon.service.WeChatService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
@@ -26,9 +27,11 @@ import java.util.Map;
 public class HackathonController {
 
     private final HackathonService hackathonService;
+    private final WeChatService weChatService;
 
-    public HackathonController(HackathonService hackathonService) {
+    public HackathonController(HackathonService hackathonService, WeChatService weChatService) {
         this.hackathonService = hackathonService;
+        this.weChatService = weChatService;
     }
 
     /**
@@ -210,6 +213,24 @@ public class HackathonController {
         } catch (Exception e) {
             log.error("清除项目缓存失败", e);
             return ApiResponse.error("清除缓存失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取微信 JS-SDK 签名配置
+     *
+     * @param url 当前页面URL（必填，不包含#及其后面部分）
+     * @return 微信签名配置 {appId, timestamp, nonceStr, signature}
+     */
+    @GetMapping("/wechat/signature")
+    public ApiResponse<Map<String, String>> getWeChatSignature(@RequestParam String url) {
+        try {
+            log.info("获取微信签名: url={}", url);
+            Map<String, String> signature = weChatService.generateSignature(url);
+            return ApiResponse.success(signature);
+        } catch (Exception e) {
+            log.error("获取微信签名失败", e);
+            return ApiResponse.error("获取微信签名失败: " + e.getMessage());
         }
     }
 }

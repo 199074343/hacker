@@ -47,6 +47,15 @@ baidu:
         client-id: ${BAIDU_ACCOUNT2_CLIENT_ID:9WdFRWt8Db2aGZVPcCVXBgIYmOQUXTEH}
         client-secret: ${BAIDU_ACCOUNT2_CLIENT_SECRET:tRiVxGdREeQbowK8VUKwA7KLrkZVmP3V}
 
+# 微信公众号配置
+wechat:
+  app-id: ${WECHAT_APP_ID:wx22e8cd106285260d}
+  app-secret: ${WECHAT_APP_SECRET:9bb43e177fe3507863b4eea8bcff745e}
+  # Access Token 缓存时间（秒），默认7000秒
+  access-token-expire: 7000
+  # JS API Ticket 缓存时间（秒），默认7000秒
+  js-api-ticket-expire: 7000
+
 # 业务配置
 hackathon:
   # 晋级名额

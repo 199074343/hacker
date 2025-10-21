@@ -11,8 +11,8 @@
 const SHARE_CONFIG = {
     title: '高顿GDTech第八届骇客大赛',
     desc: '教育XAI Coding',
-    link: window.location.href,
-    imgUrl: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/new_background.png')
+    link: window.location.href.split('#')[0],  // 去掉#及其后面的内容
+    imgUrl: window.location.origin + '/banner.png'  // 使用banner.png作为分享图
 };
 
 /**
@@ -30,17 +30,8 @@ function initWechatShare() {
     console.log('检测到微信环境，初始化分享配置...');
     console.log('分享配置:', SHARE_CONFIG);
 
-    // 获取微信签名配置
-    // TODO: 替换为你的后端签名接口
-    // fetchWechatSignature();
-
-    // 如果没有后端签名接口，可以使用下面的示例代码（需要手动填入配置）
-    configWechatShare({
-        appId: 'YOUR_WECHAT_APPID',  // TODO: 替换为你的微信公众号AppId
-        timestamp: Math.floor(Date.now() / 1000),
-        nonceStr: 'TEMP_NONCE_STRING',  // TODO: 需要后端生成
-        signature: 'TEMP_SIGNATURE'     // TODO: 需要后端生成签名
-    });
+    // 从后端获取微信签名配置
+    fetchWechatSignature();
 }
 
 /**
@@ -48,14 +39,22 @@ function initWechatShare() {
  */
 async function fetchWechatSignature() {
     try {
-        // TODO: 替换为你的后端签名接口地址
-        const response = await fetch('/api/wechat/signature?url=' + encodeURIComponent(window.location.href));
-        const config = await response.json();
+        // 获取当前页面URL（去掉#及其后面的内容）
+        const url = window.location.href.split('#')[0];
 
-        if (config.code === 200) {
-            configWechatShare(config.data);
+        // 调用后端签名接口
+        const apiUrl = API_BASE_URL + '/hackathon/wechat/signature?url=' + encodeURIComponent(url);
+        console.log('请求微信签名接口:', apiUrl);
+
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+
+        console.log('微信签名响应:', result);
+
+        if (result.code === 200 && result.data) {
+            configWechatShare(result.data);
         } else {
-            console.error('获取微信签名失败:', config.message);
+            console.error('获取微信签名失败:', result.message || '未知错误');
         }
     } catch (error) {
         console.error('获取微信签名异常:', error);
