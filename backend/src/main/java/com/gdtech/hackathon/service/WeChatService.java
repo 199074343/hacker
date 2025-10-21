@@ -97,9 +97,9 @@ public class WeChatService {
 
         // 请求新的 JS API Ticket
         try {
-            // 使用正确的API端点
+            // 使用正确的API端点（需要type=jsapi参数）
             String url = String.format(
-                "https://api.weixin.qq.com/cgi-bin/ticket/getjsapi_ticket?access_token=%s",
+                "https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=%s&type=jsapi",
                 accessToken
             );
 
