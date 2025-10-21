@@ -898,28 +898,9 @@ public class HackathonService {
                 log.debug("锁定期排名计算完成，晋级项目{}个，非晋级项目{}个", qualifiedProjects.size(), nonQualifiedProjects.size());
             }
 
-        } else if (stage == CompetitionStage.ENDED) {
-            // 结束期：数据和排名完全冻结，不再重新计算
-            log.debug("结束期：排名已冻结，不重新计算");
-
-            // 标记晋级状态（从配置表读取）
-            List<Long> qualifiedProjectIds = (configRecords != null)
-                    ? resolveQualifiedProjectIdsFromData(projects, qualifiedCount, configRecords)
-                    : resolveQualifiedProjectIds(projects, qualifiedCount);
-
-            if (!qualifiedProjectIds.isEmpty()) {
-                final Set<Long> finalQualifiedIds = new LinkedHashSet<>(qualifiedProjectIds);
-                projects.forEach(p -> p.setQualified(finalQualifiedIds.contains(p.getId())));
-            }
-
-            // 保持项目当前顺序和排名，不做任何排序
-            // 排名应该由数据源（飞书表格）的顺序决定
-            for (int i = 0; i < projects.size(); i++) {
-                projects.get(i).setRank(i + 1);
-            }
-
-        } else if (stage == CompetitionStage.INVESTMENT) {
-            // 投资期：晋级名单固定，使用加权排名算法
+        } else if (stage == CompetitionStage.INVESTMENT || stage == CompetitionStage.ENDED) {
+            // 投资期/结束期：晋级名单固定，使用加权排名算法
+            // 结束期：UV数据不再更新（由UVSyncScheduler控制），但使用相同的排序逻辑保持投资期的排名
 
             // 步骤1：获取晋级项目ID列表
             List<Long> qualifiedProjectIds = (configRecords != null)
@@ -1047,7 +1028,8 @@ public class HackathonService {
             projects.addAll(qualifiedProjects);
             projects.addAll(nonQualifiedProjects);
 
-            log.debug("投资期排名计算完成，使用加权算法：(16-UV排名)/15*0.2 + (16-投资额排名)/15*0.8（仅晋级区15队）");
+            String stageName = stage == CompetitionStage.ENDED ? "结束期" : "投资期";
+            log.debug("{}排名计算完成，使用加权算法：(16-UV排名)/15*0.2 + (16-投资额排名)/15*0.8（仅晋级区15队）", stageName);
         }
     }
 
@@ -1101,7 +1083,13 @@ public class HackathonService {
     private List<Long> resolveQualifiedProjectIdsFromData(List<Project> projects, int qualifiedCount, List<Map<String, Object>> configRecords) {
         QualifiedProjectsConfig config = loadQualifiedProjectsConfigFromData(configRecords);
         if (!config.getProjectIds().isEmpty()) {
-            return new ArrayList<>(config.getProjectIds());
+            // 限制晋级项目数量，最多取qualifiedCount个
+            List<Long> projectIds = new ArrayList<>(config.getProjectIds());
+            if (projectIds.size() > qualifiedCount) {
+                log.warn("配置的晋级项目数量{}超过限制{}，截取前{}个", projectIds.size(), qualifiedCount, qualifiedCount);
+                projectIds = projectIds.subList(0, qualifiedCount);
+            }
+            return projectIds;
         }
 
         List<Long> computed = selectTopProjectsByUv(projects, qualifiedCount).stream()
@@ -1123,7 +1111,13 @@ public class HackathonService {
     private List<Long> resolveQualifiedProjectIds(List<Project> projects, int qualifiedCount) {
         QualifiedProjectsConfig config = loadQualifiedProjectsConfig();
         if (!config.getProjectIds().isEmpty()) {
-            return new ArrayList<>(config.getProjectIds());
+            // 限制晋级项目数量，最多取qualifiedCount个
+            List<Long> projectIds = new ArrayList<>(config.getProjectIds());
+            if (projectIds.size() > qualifiedCount) {
+                log.warn("配置的晋级项目数量{}超过限制{}，截取前{}个", projectIds.size(), qualifiedCount, qualifiedCount);
+                projectIds = projectIds.subList(0, qualifiedCount);
+            }
+            return projectIds;
         }
 
         List<Long> computed = selectTopProjectsByUv(projects, qualifiedCount).stream()
