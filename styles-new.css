@@ -19,20 +19,20 @@ body {
     overflow-x: hidden;
 }
 
-/* 使用伪元素放置背景图（iOS兼容方案） */
-body::before {
-    content: '';
+/* 使用img标签作为背景（最可靠的iOS方案） */
+.background-image {
     position: fixed;
     top: 50px;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('./new_background.png');
-    background-position: center top;
-    background-repeat: no-repeat;
-    background-size: cover;
-    -webkit-background-size: cover;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    max-width: none;
     z-index: -2;
+    object-fit: cover;
+    pointer-events: none;
 }
 
 /* 背景图片覆盖层 - 轻微暗化以提高文字可读性 */
@@ -698,12 +698,15 @@ body::before {
         height: auto;
     }
 
-    body::before {
+    .background-image {
         position: absolute;
         top: 0;
-        background-position: center top;
-        background-size: contain;
-        -webkit-background-size: contain;
+        left: 0;
+        transform: none;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        object-fit: contain;
     }
 
     .banner-container {
@@ -759,12 +762,15 @@ body::before {
         height: auto;
     }
 
-    body::before {
+    .background-image {
         position: absolute;
         top: 0;
-        background-position: center top;
-        background-size: 100% auto;
-        -webkit-background-size: 100% auto;
+        left: 0;
+        transform: none;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        object-fit: contain;
     }
 
     .banner-container {
