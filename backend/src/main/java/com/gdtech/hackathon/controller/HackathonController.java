@@ -227,6 +227,7 @@ public class HackathonController {
      */
     @GetMapping("/server-ip")
     public ApiResponse<Map<String, String>> getServerIp() {
+        //触发自动部署
         try {
             log.info("获取服务器出口IP");
             org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
