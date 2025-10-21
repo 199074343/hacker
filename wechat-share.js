@@ -12,7 +12,7 @@ const SHARE_CONFIG = {
     title: '高顿GDTech第八届骇客大赛',
     desc: '教育XAI Coding',
     link: window.location.href.split('#')[0],  // 去掉#及其后面的内容
-    imgUrl: window.location.origin + '/banner.png'  // 使用banner.png作为分享图
+    imgUrl: 'https://hackathon.gaodun.com/banner.png'  // 使用完整的绝对URL
 };
 
 /**
@@ -42,8 +42,8 @@ async function fetchWechatSignature() {
         // 获取当前页面URL（去掉#及其后面的内容）
         const url = window.location.href.split('#')[0];
 
-        // 调用后端签名接口
-        const apiUrl = API_BASE_URL + '/hackathon/wechat/signature?url=' + encodeURIComponent(url);
+        // 调用后端签名接口（使用完整的API路径）
+        const apiUrl = 'https://hackathon-backend.gaodun.com/api/hackathon/wechat/signature?url=' + encodeURIComponent(url);
         console.log('请求微信签名接口:', apiUrl);
 
         const response = await fetch(apiUrl);
@@ -52,6 +52,7 @@ async function fetchWechatSignature() {
         console.log('微信签名响应:', result);
 
         if (result.code === 200 && result.data) {
+            console.log('微信配置数据:', result.data);
             configWechatShare(result.data);
         } else {
             console.error('获取微信签名失败:', result.message || '未知错误');
@@ -73,7 +74,7 @@ function configWechatShare(wxConfig) {
 
     // 配置微信JS-SDK
     wx.config({
-        debug: false,  // 开发环境可设为true，生产环境设为false
+        debug: true,  // 开启调试模式，会在微信中弹出详细的错误信息
         appId: wxConfig.appId,
         timestamp: wxConfig.timestamp,
         nonceStr: wxConfig.nonceStr,
@@ -84,6 +85,13 @@ function configWechatShare(wxConfig) {
             'onMenuShareAppMessage',       // 旧版分享给朋友（兼容）
             'onMenuShareTimeline'          // 旧版分享到朋友圈（兼容）
         ]
+    });
+
+    console.log('微信JS-SDK配置参数:', {
+        appId: wxConfig.appId,
+        timestamp: wxConfig.timestamp,
+        nonceStr: wxConfig.nonceStr,
+        signature: wxConfig.signature
     });
 
     // 配置成功回调
