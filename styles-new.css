@@ -744,7 +744,16 @@ body {
     }
 
     .navbar-brand {
-        font-size: 1.2rem;
+        font-size: 0.95rem;
+    }
+
+    .navbar-brand i {
+        display: none;
+    }
+
+    .glass-btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
     }
     
     .project-card {
@@ -832,6 +841,19 @@ body {
     .qualified-section,
     .non-qualified-section {
         padding: 15px;
+    }
+
+    .navbar-brand {
+        font-size: 0.9rem;
+    }
+
+    .navbar-brand i {
+        display: none;
+    }
+
+    .glass-btn {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.7rem;
     }
 }
 
