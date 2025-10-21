@@ -224,18 +224,38 @@ public class HackathonController {
      */
     /**
      * 获取服务器出口IP地址（用于配置微信IP白名单）
+     * 通过调用微信API并从错误信息中提取IP
      */
     @GetMapping("/server-ip")
     public ApiResponse<Map<String, String>> getServerIp() {
-        //触发自动部署
         try {
-            log.info("获取服务器出口IP");
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            String ip = restTemplate.getForObject("https://api.ipify.org?format=text", String.class);
+            log.info("尝试获取服务器出口IP");
             Map<String, String> result = new HashMap<>();
-            result.put("ip", ip);
-            result.put("message", "请将此IP地址添加到微信公众号后台的IP白名单中");
-            log.info("服务器出口IP: {}", ip);
+
+            // 方法1: 尝试调用微信API，从错误信息中提取IP
+            try {
+                String accessToken = weChatService.getAccessToken();
+                result.put("method", "通过微信Access Token推断");
+                result.put("accessToken", accessToken.substring(0, Math.min(20, accessToken.length())) + "...");
+                result.put("message", "Access Token获取成功，请在Zeabur控制台执行: curl https://ifconfig.me 或查看环境变量获取真实出口IP");
+            } catch (Exception e) {
+                String errorMsg = e.getMessage();
+                log.warn("微信API调用失败: {}", errorMsg);
+                // 尝试从错误信息中提取IP（微信会在错误中包含请求IP）
+                if (errorMsg != null && errorMsg.contains("ip")) {
+                    result.put("error", errorMsg);
+                }
+            }
+
+            // 方法2: 返回Zeabur环境变量中的IP提示
+            String zeaburRegion = System.getenv("ZEABUR_REGION");
+            result.put("zeabur_region", zeaburRegion != null ? zeaburRegion : "unknown");
+            result.put("instruction", "请在Zeabur控制台Terminal执行以下命令之一获取真实出口IP:");
+            result.put("command1", "wget -qO- https://ifconfig.me");
+            result.put("command2", "python3 -c \"import urllib.request; print(urllib.request.urlopen('https://ifconfig.me').read().decode())\"");
+            result.put("command3", "在Zeabur Dashboard -> Service -> Networking 中查看");
+
+            log.info("返回IP获取提示: {}", result);
             return ApiResponse.success(result);
         } catch (Exception e) {
             log.error("获取服务器IP失败", e);
