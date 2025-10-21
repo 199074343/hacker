@@ -704,9 +704,11 @@ body {
         left: 0;
         transform: none;
         width: 100%;
-        height: auto;
-        min-height: 0;
-        object-fit: contain;
+        height: 100vh;
+        min-height: 100vh;
+        max-width: 100%;
+        object-fit: cover;
+        object-position: center top;
     }
 
     .banner-container {
@@ -768,9 +770,11 @@ body {
         left: 0;
         transform: none;
         width: 100%;
-        height: auto;
-        min-height: 0;
-        object-fit: contain;
+        height: 100vh;
+        min-height: 100vh;
+        max-width: 100%;
+        object-fit: cover;
+        object-position: center top;
     }
 
     .banner-container {
