@@ -49,8 +49,8 @@ baidu:
 
 # 微信公众号配置
 wechat:
-  app-id: ${WECHAT_APP_ID:wx22e8cd106285260d}
-  app-secret: ${WECHAT_APP_SECRET:9bb43e177fe3507863b4eea8bcff745e}
+  app-id: ${WECHAT_APP_ID:wxd8981c6689d26829}
+  app-secret: ${WECHAT_APP_SECRET:b05e6483670d1fb5d8fac346e79b534f}
   # Access Token 缓存时间（秒），默认7000秒
   access-token-expire: 7000
   # JS API Ticket 缓存时间（秒），默认7000秒
