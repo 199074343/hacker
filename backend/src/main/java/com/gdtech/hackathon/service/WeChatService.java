@@ -97,13 +97,15 @@ public class WeChatService {
 
         // 请求新的 JS API Ticket
         try {
+            // 使用正确的API端点
             String url = String.format(
-                "https://api.weixin.qq.com/cgi-bin/ticket/getjsapi?access_token=%s&type=jsapi",
+                "https://api.weixin.qq.com/cgi-bin/ticket/getjsapi_ticket?access_token=%s",
                 accessToken
             );
 
-            log.info("请求微信 JS API Ticket");
+            log.info("请求微信 JS API Ticket: {}", url);
             String response = restTemplate.getForObject(url, String.class);
+            log.info("JS API Ticket 响应: {}", response);
             JsonNode jsonNode = objectMapper.readTree(response);
 
             if (jsonNode.has("ticket") && jsonNode.get("errcode").asInt() == 0) {
