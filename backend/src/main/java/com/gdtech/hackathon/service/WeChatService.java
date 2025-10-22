@@ -60,6 +60,7 @@ public class WeChatService {
 
             log.info("请求微信 Access Token: appid={}", weChatConfig.getAppId());
             String response = restTemplate.getForObject(url, String.class);
+            log.info("===== 微信Access Token完整响应 ===== {}", response);
             JsonNode jsonNode = objectMapper.readTree(response);
 
             if (jsonNode.has("access_token")) {
@@ -70,7 +71,7 @@ public class WeChatService {
             } else {
                 String errcode = jsonNode.has("errcode") ? jsonNode.get("errcode").asText() : "unknown";
                 String errmsg = jsonNode.has("errmsg") ? jsonNode.get("errmsg").asText() : "unknown";
-                log.error("获取 Access Token 失败: errcode={}, errmsg={}", errcode, errmsg);
+                log.error("===== 获取 Access Token 失败 ===== errcode={}, errmsg={}, 完整响应={}", errcode, errmsg, response);
                 throw new RuntimeException("获取微信 Access Token 失败: " + errmsg);
             }
         } catch (Exception e) {
@@ -105,7 +106,7 @@ public class WeChatService {
 
             log.info("请求微信 JS API Ticket: {}", url);
             String response = restTemplate.getForObject(url, String.class);
-            log.info("JS API Ticket 响应: {}", response);
+            log.info("===== 微信JS API Ticket完整响应 ===== {}", response);
             JsonNode jsonNode = objectMapper.readTree(response);
 
             if (jsonNode.has("ticket") && jsonNode.get("errcode").asInt() == 0) {
@@ -116,8 +117,9 @@ public class WeChatService {
             } else {
                 int errcode = jsonNode.has("errcode") ? jsonNode.get("errcode").asInt() : -1;
                 String errmsg = jsonNode.has("errmsg") ? jsonNode.get("errmsg").asText() : "unknown";
-                log.error("获取 JS API Ticket 失败: errcode={}, errmsg={}", errcode, errmsg);
-                throw new RuntimeException("获取微信 JS API Ticket 失败: " + errmsg);
+                String rid = jsonNode.has("rid") ? jsonNode.get("rid").asText() : "no-rid";
+                log.error("===== 获取 JS API Ticket 失败 ===== errcode={}, errmsg={}, rid={}, 完整响应={}", errcode, errmsg, rid, response);
+                throw new RuntimeException("获取微信 JS API Ticket 失败: " + errmsg + " (rid: " + rid + ")");
             }
         } catch (Exception e) {
             log.error("获取 JS API Ticket 异常", e);
