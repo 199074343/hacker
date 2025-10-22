@@ -74,7 +74,7 @@ function configWechatShare(wxConfig) {
 
     // 配置微信JS-SDK
     wx.config({
-        debug: true,  // 开启调试模式，会在微信中弹出详细的错误信息
+        debug: false,  // 生产环境关闭调试模式
         appId: wxConfig.appId,
         timestamp: wxConfig.timestamp,
         nonceStr: wxConfig.nonceStr,
