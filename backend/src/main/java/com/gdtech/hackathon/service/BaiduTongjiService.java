@@ -397,25 +397,24 @@ public class BaiduTongjiService {
     }
 
     /**
-     * 获取站点累计UV（从活动开始到现在）
-     * 活动开始日期：2025-10-24
+     * 获取站点累计UV（所有历史数据，不限日期范围）
      *
      * @param accountName 百度统计账号标识
      * @param siteId      站点ID
-     * @return 累计UV（从活动开始到现在）
+     * @return 累计UV（所有历史数据）
      */
     public Integer getCumulativeUVFromStart(String accountName, String siteId) {
-        // 活动开始日期：2025-10-24
-        LocalDate activityStartDate = LocalDate.of(2025, 10, 24);
+        // 使用足够早的日期作为起始日期，覆盖所有历史数据
+        LocalDate startDate = LocalDate.of(2020, 1, 1);
         LocalDate today = LocalDate.now();
 
-        String startDate = activityStartDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String endDate = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String endDateStr = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        log.info("获取活动期间累计UV: account={}, site={}, 日期范围={} 到 {}",
-                accountName, siteId, startDate, endDate);
+        log.info("获取所有历史累计UV: account={}, site={}, 日期范围={} 到 {}",
+                accountName, siteId, startDateStr, endDateStr);
 
-        return getSiteUV(accountName, siteId, startDate, endDate);
+        return getSiteUV(accountName, siteId, startDateStr, endDateStr);
     }
 
     /**
