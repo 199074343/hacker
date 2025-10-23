@@ -46,6 +46,9 @@ baidu:
       account2:
         client-id: ${BAIDU_ACCOUNT2_CLIENT_ID:9WdFRWt8Db2aGZVPcCVXBgIYmOQUXTEH}
         client-secret: ${BAIDU_ACCOUNT2_CLIENT_SECRET:tRiVxGdREeQbowK8VUKwA7KLrkZVmP3V}
+        # 需要在Zeabur环境变量中配置account2的授权token
+        access-token: ${BAIDU_ACCOUNT2_ACCESS_TOKEN:}
+        refresh-token: ${BAIDU_ACCOUNT2_REFRESH_TOKEN:}
 
 # 微信公众号配置
 wechat:
