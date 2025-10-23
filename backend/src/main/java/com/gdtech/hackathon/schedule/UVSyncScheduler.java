@@ -109,8 +109,9 @@ public class UVSyncScheduler {
                         continue;
                     }
 
-                    // 使用当日UV（实时更新，响应更快）
-                    Integer uv = baiduTongjiService.getTodayUV(baiduAccount, baiduSiteId);
+                    // 获取累计UV（最近30天）
+                    // 注：虽然接口本身不是实时的，但使用当日数据查询会更快
+                    Integer uv = baiduTongjiService.getCumulativeUV(baiduAccount, baiduSiteId, 30);
 
                     if (uv != null) {
                         // 更新飞书表格中的UV值
@@ -119,10 +120,10 @@ public class UVSyncScheduler {
 
                         feishuService.updateRecord(tableId, recordId, fields);
 
-                        log.info("项目 {} (ID:{}, 账号:{}) 当日UV更新成功: {}", projectName, projectId, baiduAccount, uv);
+                        log.info("项目 {} (ID:{}, 账号:{}) 累计UV更新成功: {}", projectName, projectId, baiduAccount, uv);
                         successCount++;
                     } else {
-                        log.warn("项目 {} (ID:{}, 账号:{}) 获取当日UV失败", projectName, projectId, baiduAccount);
+                        log.warn("项目 {} (ID:{}, 账号:{}) 获取累计UV失败", projectName, projectId, baiduAccount);
                         failCount++;
                     }
 
