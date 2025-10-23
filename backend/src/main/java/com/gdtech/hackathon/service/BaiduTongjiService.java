@@ -322,7 +322,69 @@ public class BaiduTongjiService {
     }
 
     /**
-     * 获取站点当日UV
+     * 获取实时访客数（使用实时接口 trend/latest/a）
+     *
+     * @param accountName 百度统计账号标识
+     * @param siteId      站点ID
+     * @return 当前实时访客数
+     */
+    public Integer getRealtimeVisitors(String accountName, String siteId) {
+        try {
+            BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(accountName);
+            if (credentials == null) {
+                log.error("账号 {} 配置不存在", accountName);
+                return null;
+            }
+
+            ensureValidToken(accountName);
+
+            // 使用实时接口
+            String url = String.format(
+                    "%s?access_token=%s&site_id=%s&method=trend/latest/a&metrics=start_time,area,source,access_page",
+                    baiduConfig.getApiUrl(),
+                    credentials.getAccessToken(),
+                    siteId
+            );
+
+            log.debug("调用百度统计实时API: account={}, site_id={}", accountName, siteId);
+
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                JsonNode jsonNode = objectMapper.readTree(response.getBody());
+
+                // 检查响应格式
+                if (jsonNode.has("header")) {
+                    JsonNode header = jsonNode.get("header");
+                    int status = header.has("status") ? header.get("status").asInt() : -1;
+
+                    if (status == 0) {
+                        // 成功获取数据
+                        JsonNode body = jsonNode.get("body");
+                        if (body != null && body.has("data")) {
+                            JsonNode dataArray = body.get("data");
+                            if (dataArray.isArray()) {
+                                int visitorCount = dataArray.size();
+                                log.info("实时访客数获取成功: account={}, site_id={}, count={}", accountName, siteId, visitorCount);
+                                return visitorCount;
+                            }
+                        }
+                        return 0; // 没有访客
+                    } else {
+                        log.error("百度统计实时API返回错误: account={}, status={}, message={}",
+                                accountName, status, header.has("desc") ? header.get("desc").asText() : "unknown");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("获取实时访客数异常: account={}, site_id={}", accountName, siteId, e);
+        }
+
+        return null;
+    }
+
+    /**
+     * 获取站点当日UV（使用实时趋势接口，更快）
      *
      * @param accountName 百度统计账号标识
      * @param siteId      站点ID

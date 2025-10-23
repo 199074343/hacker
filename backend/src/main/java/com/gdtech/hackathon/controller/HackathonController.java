@@ -28,10 +28,14 @@ public class HackathonController {
 
     private final HackathonService hackathonService;
     private final WeChatService weChatService;
+    private final com.gdtech.hackathon.service.BaiduTongjiService baiduTongjiService;
 
-    public HackathonController(HackathonService hackathonService, WeChatService weChatService) {
+    public HackathonController(HackathonService hackathonService,
+                              WeChatService weChatService,
+                              com.gdtech.hackathon.service.BaiduTongjiService baiduTongjiService) {
         this.hackathonService = hackathonService;
         this.weChatService = weChatService;
+        this.baiduTongjiService = baiduTongjiService;
     }
 
     /**
@@ -272,6 +276,37 @@ public class HackathonController {
         } catch (Exception e) {
             log.error("获取微信签名失败", e);
             return ApiResponse.error("获取微信签名失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 测试百度统计实时接口
+     *
+     * @param accountName 账号名称（account1 或 account2）
+     * @param siteId 站点ID
+     * @return 实时访客数
+     */
+    @GetMapping("/baidu/realtime")
+    public ApiResponse<Map<String, Object>> testBaiduRealtime(
+            @RequestParam(defaultValue = "account1") String accountName,
+            @RequestParam String siteId) {
+        try {
+            log.info("测试百度统计实时接口: account={}, siteId={}", accountName, siteId);
+
+            Integer realtimeCount = baiduTongjiService.getRealtimeVisitors(accountName, siteId);
+            Integer todayUV = baiduTongjiService.getTodayUV(accountName, siteId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("accountName", accountName);
+            result.put("siteId", siteId);
+            result.put("realtimeVisitors", realtimeCount);
+            result.put("todayUV", todayUV);
+            result.put("message", "实时访客数：" + realtimeCount + "，当日UV：" + todayUV);
+
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("测试百度统计实时接口失败", e);
+            return ApiResponse.error("测试失败: " + e.getMessage());
         }
     }
 }
