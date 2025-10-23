@@ -280,32 +280,34 @@ public class HackathonController {
     }
 
     /**
-     * 测试百度统计实时接口
+     * 测试百度统计接口
      *
      * @param accountName 账号名称（account1 或 account2）
      * @param siteId 站点ID
-     * @return 实时访客数
+     * @return UV统计数据
      */
-    @GetMapping("/baidu/realtime")
-    public ApiResponse<Map<String, Object>> testBaiduRealtime(
+    @GetMapping("/baidu/test")
+    public ApiResponse<Map<String, Object>> testBaiduStats(
             @RequestParam(defaultValue = "account1") String accountName,
             @RequestParam String siteId) {
         try {
-            log.info("测试百度统计实时接口: account={}, siteId={}", accountName, siteId);
+            log.info("测试百度统计接口: account={}, siteId={}", accountName, siteId);
 
-            Integer realtimeCount = baiduTongjiService.getRealtimeVisitors(accountName, siteId);
+            Integer cumulativeUV = baiduTongjiService.getCumulativeUVFromStart(accountName, siteId);
             Integer todayUV = baiduTongjiService.getTodayUV(accountName, siteId);
+            Integer realtimeVisitors = baiduTongjiService.getRealtimeVisitors(accountName, siteId);
 
             Map<String, Object> result = new HashMap<>();
             result.put("accountName", accountName);
             result.put("siteId", siteId);
-            result.put("realtimeVisitors", realtimeCount);
+            result.put("cumulativeUV", cumulativeUV);
             result.put("todayUV", todayUV);
-            result.put("message", "实时访客数：" + realtimeCount + "，当日UV：" + todayUV);
+            result.put("realtimeVisitors", realtimeVisitors);
+            result.put("message", "活动期间累计UV：" + cumulativeUV + "，当日UV：" + todayUV + "，实时访客：" + realtimeVisitors);
 
             return ApiResponse.success(result);
         } catch (Exception e) {
-            log.error("测试百度统计实时接口失败", e);
+            log.error("测试百度统计接口失败", e);
             return ApiResponse.error("测试失败: " + e.getMessage());
         }
     }
