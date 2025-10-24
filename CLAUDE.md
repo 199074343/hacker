@@ -102,12 +102,12 @@ Frontend runs on: `http://localhost:8000`
 
 The application operates in four distinct stages, controlled by the `currentStage` variable in `script.js`:
 
-1. **Selection Period** (`'selection'`): 10/25 0:00 - 11/7 12:00
-   - Ranking by cumulative UV (unique visitors) from 10/25 0:00 onwards
+1. **Selection Period** (`'selection'`): 2025/10/25 0:00 - 2025/11/7 12:00
+   - Ranking by cumulative UV (unique visitors) from 2025/10/25 0:00 onwards
    - Top 15 advance to investment period
    - No investment allowed
 
-2. **Lock Period** (`'lock'`): 11/7 12:00 - 11/14 0:00
+2. **Lock Period** (`'lock'`): 2025/11/7 12:00 - 2025/11/14 0:00
    - Qualified projects (top 15) displayed separately
    - Non-qualified projects shown in separate section
    - Both ranked by UV
