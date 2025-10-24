@@ -790,6 +790,12 @@ async function showInvestorPage() {
     // 隐藏主要内容，显示投资人页面
     document.querySelector('.main-content').style.display = 'none';
 
+    // 先删除已存在的投资人页面（如果有）
+    const existingInvestorPage = document.querySelector('.investor-page');
+    if (existingInvestorPage) {
+        existingInvestorPage.remove();
+    }
+
     // 创建投资人页面内容
     const investorPageHTML = `
         <div class="container-fluid investor-page" style="padding-top: 100px; padding-bottom: 50px;">
