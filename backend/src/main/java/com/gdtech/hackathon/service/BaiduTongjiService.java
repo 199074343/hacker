@@ -397,21 +397,21 @@ public class BaiduTongjiService {
     }
 
     /**
-     * 获取站点累计UV（所有历史数据，不限日期范围）
+     * 获取站点累计UV（从海选期开始统计）
      *
      * @param accountName 百度统计账号标识
      * @param siteId      站点ID
-     * @return 累计UV（所有历史数据）
+     * @return 累计UV（从2025-10-25开始）
      */
     public Integer getCumulativeUVFromStart(String accountName, String siteId) {
-        // 使用足够早的日期作为起始日期，覆盖所有历史数据
-        LocalDate startDate = LocalDate.of(2020, 1, 1);
+        // 海选期开始时间：2025年10月25日 0:00
+        LocalDate startDate = LocalDate.of(2025, 10, 25);
         LocalDate today = LocalDate.now();
 
         String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String endDateStr = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        log.info("获取所有历史累计UV: account={}, site={}, 日期范围={} 到 {}",
+        log.info("获取海选期累计UV: account={}, site={}, 日期范围={} 到 {}",
                 accountName, siteId, startDateStr, endDateStr);
 
         return getSiteUV(accountName, siteId, startDateStr, endDateStr);

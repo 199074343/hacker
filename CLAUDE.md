@@ -102,8 +102,8 @@ Frontend runs on: `http://localhost:8000`
 
 The application operates in four distinct stages, controlled by the `currentStage` variable in `script.js`:
 
-1. **Selection Period** (`'selection'`): 10/24 24:00 - 11/7 12:00
-   - Ranking by cumulative UV (unique visitors)
+1. **Selection Period** (`'selection'`): 10/25 0:00 - 11/7 12:00
+   - Ranking by cumulative UV (unique visitors) from 10/25 0:00 onwards
    - Top 15 advance to investment period
    - No investment allowed
 
