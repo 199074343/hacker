@@ -669,7 +669,7 @@ public class HackathonService {
             // 构建投资人Map
             Map<String, Map<String, Object>> investorMap = investorRecords.stream()
                     .collect(Collectors.toMap(
-                            r -> (String) r.get("账号"),
+                            r -> getStringValue(r, "账号"),
                             r -> r,
                             (existing, replacement) -> existing
                     ));
@@ -691,15 +691,15 @@ public class HackathonService {
                 List<InvestmentRecord> records2 = investments.stream()
                         .map(r -> {
                             InvestmentRecord record = new InvestmentRecord();
-                            String investorUsername = (String) r.get("投资人账号");
-                            record.setName((String) r.get("投资人姓名"));
+                            String investorUsername = getStringValue(r, "投资人账号");
+                            record.setName(getStringValue(r, "投资人姓名"));
                             record.setAmount(getInteger(r, "投资金额"));
 
                             // 从投资人表查询职务、头像和初始额度
                             Map<String, Object> investorData = investorMap.get(investorUsername);
                             if (investorData != null) {
-                                record.setTitle((String) investorData.get("职务"));
-                                record.setAvatar((String) investorData.get("头像URL"));
+                                record.setTitle(getStringValue(investorData, "职务"));
+                                record.setAvatar(getStringValue(investorData, "头像URL"));
                                 record.setInitialAmount(getInteger(investorData, "初始额度"));
                             }
 
