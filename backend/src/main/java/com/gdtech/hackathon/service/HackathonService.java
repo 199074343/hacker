@@ -947,8 +947,13 @@ public class HackathonService {
             for (int i = 0; i < uvSorted.size(); i++) {
                 int rank = i + 1; // UV排名（1-15）
                 Project p = uvSorted.get(i);
-                // 新公式：UV分数 = (16 - UV排名) / 15
-                double score = (double)(16 - rank) / 15;
+                // 新公式：UV分数 = (16 - UV排名) / 15，但UV为0时分数为0
+                double score;
+                if (p.getUv() != 0) {
+                    score = (double)(16 - rank) / 15;
+                } else {
+                    score = 0.0;
+                }
                 uvRankMap.put(p.getId(), rank);
                 uvScores.put(p.getId(), score);
             }
@@ -968,8 +973,13 @@ public class HackathonService {
             for (int i = 0; i < investmentSorted.size(); i++) {
                 int rank = i + 1; // 投资额排名（1-15）
                 Project p = investmentSorted.get(i);
-                // 新公式：投资额分数 = (16 - 投资额排名) / 15
-                double score = (double)(16 - rank) / 15;
+                // 新公式：投资额分数 = (16 - 投资额排名) / 15，但投资额为0时分数为0
+                double score;
+                if (p.getInvestment() != 0) {
+                    score = (double)(16 - rank) / 15;
+                } else {
+                    score = 0.0;
+                }
                 investmentRankMap.put(p.getId(), rank);
                 investmentScores.put(p.getId(), score);
             }
