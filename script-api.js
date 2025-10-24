@@ -462,9 +462,16 @@ function renderProjectList(containerId, projectList, isQualified) {
                                     <div class="investment-records">
                                         ${project.investmentRecords.map(record => `
                                             <div class="investor-avatar"
-                                                 style="background-image: url('${record.avatar || './default-avatar.svg'}')"
-                                                 title="${record.name} - ${record.amount}万元">
+                                                 style="background-image: url('${record.avatar || './default-avatar.svg'}')">
                                                 <div class="investment-amount">${record.amount}</div>
+                                                <div class="investor-tooltip">
+                                                    <div class="tooltip-name">${record.name}</div>
+                                                    <div class="tooltip-info">
+                                                        <div><span class="tooltip-label">职务：</span><span class="tooltip-value">${record.title || '未知'}</span></div>
+                                                        <div><span class="tooltip-label">初始额度：</span><span class="tooltip-value">${record.initialAmount || 0}万元</span></div>
+                                                        <div><span class="tooltip-label">投资金额：</span><span class="tooltip-value">${record.amount}万元</span></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         `).join('')}
                                     </div>

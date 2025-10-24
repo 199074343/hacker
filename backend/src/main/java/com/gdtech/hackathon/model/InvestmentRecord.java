@@ -27,4 +27,9 @@ public class InvestmentRecord {
      * 投资金额（万元）
      */
     private Integer amount;
+
+    /**
+     * 投资人初始额度（万元）
+     */
+    private Integer initialAmount;
 }

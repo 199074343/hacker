@@ -667,11 +667,12 @@ public class HackathonService {
                             record.setName((String) r.get("投资人姓名"));
                             record.setAmount(getInteger(r, "投资金额"));
 
-                            // 从投资人表查询职务和头像
+                            // 从投资人表查询职务、头像和初始额度
                             Map<String, Object> investorData = investorMap.get(investorUsername);
                             if (investorData != null) {
                                 record.setTitle((String) investorData.get("职务"));
                                 record.setAvatar((String) investorData.get("头像URL"));
+                                record.setInitialAmount(getInteger(investorData, "初始额度"));
                             }
 
                             return record;
