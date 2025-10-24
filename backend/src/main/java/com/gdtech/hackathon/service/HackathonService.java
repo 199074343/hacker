@@ -576,6 +576,34 @@ public class HackathonService {
         if (value == null) {
             return null;
         }
+
+        // 处理飞书多维表格的URL类型字段：{"link": "...", "text": "...", "type": "url"}
+        if (value instanceof Map) {
+            Map<String, Object> valueMap = (Map<String, Object>) value;
+            // URL类型字段
+            if (valueMap.containsKey("link")) {
+                Object link = valueMap.get("link");
+                return link != null ? link.toString().trim() : null;
+            }
+            // 也尝试取text字段
+            if (valueMap.containsKey("text")) {
+                Object text = valueMap.get("text");
+                return text != null ? text.toString().trim() : null;
+            }
+        }
+
+        // 处理飞书多维表格的文本类型字段：[{"text": "...", "type": "text"}]
+        if (value instanceof java.util.List) {
+            java.util.List<?> list = (java.util.List<?>) value;
+            if (!list.isEmpty() && list.get(0) instanceof Map) {
+                Map<String, Object> firstItem = (Map<String, Object>) list.get(0);
+                if (firstItem.containsKey("text")) {
+                    Object text = firstItem.get("text");
+                    return text != null ? text.toString().trim() : null;
+                }
+            }
+        }
+
         return value.toString().trim();
     }
 
