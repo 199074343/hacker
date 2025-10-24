@@ -112,19 +112,20 @@ public class UVSyncScheduler {
                     // 获取从活动开始到现在的累计UV（实时累计）
                     Integer uv = baiduTongjiService.getCumulativeUVFromStart(baiduAccount, baiduSiteId);
 
-                    if (uv != null) {
-                        // 更新飞书表格中的UV值
-                        Map<String, Object> fields = new HashMap<>();
-                        fields.put("累计UV", uv.longValue());
-
-                        feishuService.updateRecord(tableId, recordId, fields);
-
-                        log.info("项目 {} (ID:{}, 账号:{}) 实时累计UV更新成功: {} (从活动开始到现在)", projectName, projectId, baiduAccount, uv);
-                        successCount++;
-                    } else {
-                        log.warn("项目 {} (ID:{}, 账号:{}) 获取实时累计UV失败", projectName, projectId, baiduAccount);
-                        failCount++;
+                    // 如果获取失败（活动未开始或查询出错），设置UV为0
+                    if (uv == null) {
+                        uv = 0;
+                        log.info("项目 {} (ID:{}, 账号:{}) UV查询失败或活动未开始，设置UV=0", projectName, projectId, baiduAccount);
                     }
+
+                    // 更新飞书表格中的UV值
+                    Map<String, Object> fields = new HashMap<>();
+                    fields.put("累计UV", uv.longValue());
+
+                    feishuService.updateRecord(tableId, recordId, fields);
+
+                    log.info("项目 {} (ID:{}, 账号:{}) UV更新成功: {}", projectName, projectId, baiduAccount, uv);
+                    successCount++;
 
                 } catch (Exception e) {
                     log.error("同步项目UV失败", e);
