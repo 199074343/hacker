@@ -460,8 +460,8 @@ function renderProjectList(containerId, projectList, isQualified) {
                                     <i class="fas fa-users stat-icon"></i>
                                     <span class="stat-label">投资记录:</span>
                                     <div class="investment-records">
-                                        ${project.investmentRecords.map(record => `
-                                            <div class="investor-avatar"
+                                        ${project.investmentRecords.map((record, idx) => `
+                                            <div class="investor-avatar investor-avatar-${project.id}-${idx}"
                                                  style="background-image: url('${record.avatar || './default-avatar.svg'}')">
                                                 <div class="investment-amount">${record.amount}</div>
                                                 <div class="investor-tooltip">
@@ -554,8 +554,10 @@ function updateLoginButton(investor) {
     const loginBtn = document.querySelector('button[onclick*="showLoginModal"], button[onclick*="showInvestorPage"]');
     if (loginBtn) {
         loginBtn.innerHTML = `
-            <img src="${investor.avatar || './default-avatar.svg'}" alt="${investor.name}"
-                 style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px;">
+            <img src="${investor.avatar || './default-avatar.svg'}"
+                 alt="${investor.name}"
+                 onerror="this.src='./default-avatar.svg'"
+                 style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; object-fit: cover;">
             ${investor.name}
         `;
         loginBtn.onclick = () => showInvestorPage();
@@ -807,8 +809,10 @@ async function showInvestorPage() {
                     <div class="glass-card mb-4">
                         <div class="row align-items-center">
                             <div class="col-auto">
-                                <img src="${currentUser.avatar || './default-avatar.svg'}" alt="${currentUser.name}"
-                                     style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.3);">
+                                <img src="${currentUser.avatar || './default-avatar.svg'}"
+                                     alt="${currentUser.name}"
+                                     onerror="this.src='./default-avatar.svg'"
+                                     style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.3); object-fit: cover;">
                             </div>
                             <div class="col">
                                 <h3 class="text-white mb-1">${currentUser.name}</h3>
