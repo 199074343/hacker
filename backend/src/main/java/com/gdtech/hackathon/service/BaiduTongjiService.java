@@ -405,10 +405,16 @@ public class BaiduTongjiService {
      */
     public Integer getCumulativeUVFromStart(String accountName, String siteId) {
         // 海选期开始时间：2025年10月25日 0:00
-        LocalDate startDate = LocalDate.of(2025, 10, 25);
+        LocalDate eventStartDate = LocalDate.of(2025, 10, 25);
         LocalDate today = LocalDate.now();
 
-        String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        // 如果今天早于活动开始日期，返回0（活动未开始）
+        if (today.isBefore(eventStartDate)) {
+            log.info("活动未开始: today={}, eventStart={}, 返回UV=0", today, eventStartDate);
+            return 0;
+        }
+
+        String startDateStr = eventStartDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String endDateStr = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         log.info("获取海选期累计UV: account={}, site={}, 日期范围={} 到 {}",
