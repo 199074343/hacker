@@ -32,8 +32,9 @@ feishu:
 # client_credentials方式获取的token无法访问统计数据API
 baidu:
   tongji:
-    # UV同步间隔（分钟）
-    sync-interval: 10
+    # UV同步间隔（秒），代码中会×1000转为毫秒
+    # 300秒 = 5分钟
+    sync-interval: 300
     # 多个百度统计账号配置
     # 推荐：直接配置已授权的access_token和refresh_token
     accounts:
