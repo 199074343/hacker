@@ -253,9 +253,27 @@ public class BaiduTongjiService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 JsonNode jsonNode = objectMapper.readTree(response.getBody());
 
-                // 支持两种响应格式：
-                // 1. 新格式: {"result": {"items": [[dates], [uv_values]]}}
-                // 2. 旧格式: {"header": {"status": 0}, "body": {"data": [[uv, ...]]}}
+                // 检查error_code格式（Token过期/无效）
+                if (jsonNode.has("error_code")) {
+                    int errorCode = jsonNode.get("error_code").asInt();
+                    String errorMsg = jsonNode.has("error_msg") ? jsonNode.get("error_msg").asText() : "unknown";
+
+                    if (errorCode == 111 || errorCode == 110) {
+                        // 111: Access token expired, 110: Access token invalid
+                        log.warn("账号 {} Token过期/无效 (error_code={}), 尝试刷新...", accountName, errorCode);
+                        refreshAccessToken(accountName);
+                        return getSiteUV(accountName, siteId, startDate, endDate);
+                    } else {
+                        log.error("百度统计API返回错误: account={}, error_code={}, error_msg={}",
+                                accountName, errorCode, errorMsg);
+                        return null;
+                    }
+                }
+
+                // 支持三种响应格式：
+                // 1. error_code格式: {"error_code": 111, "error_msg": "..."}
+                // 2. 新格式: {"result": {"items": [[dates], [uv_values]]}}
+                // 3. 旧格式: {"header": {"status": 0}, "body": {"data": [[uv, ...]]}}
 
                 // 检查新格式 (result格式)
                 if (jsonNode.has("result")) {
