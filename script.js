@@ -8,7 +8,7 @@ let investors = [];
 const stageConfig = {
     selection: {
         name: '海选期',
-        time: '10月24日24:00 - 11月7日12:00',
+        time: '10月25日0:00至11月7日 12:00',
         rule: '本阶段以累计UV排名，如果UV相同，则按队伍序号排名。本阶段结束，前15名晋级，在投资期可以接受投资人投资',
         canInvest: false
     },
