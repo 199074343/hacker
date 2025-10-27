@@ -41,9 +41,9 @@ baidu:
       account1:
         client-id: ${BAIDU_ACCOUNT1_CLIENT_ID:pSPZrp0fs3x02wvG0V8WnFByH0j3TekZ}
         client-secret: ${BAIDU_ACCOUNT1_CLIENT_SECRET:HiQPA3MFKp6ayVq60SnYu4QOaDfEaLix}
-        # 使用已授权的token（来自zeabur示例项目）
-        access-token: ${BAIDU_ACCOUNT1_ACCESS_TOKEN:121.a5389f189bd678178900fbaf180eddc9.YsUSJDM6bXRVRpah7mxH14GpE53P8bV10uNrkbA.EPrJJA}
-        refresh-token: ${BAIDU_ACCOUNT1_REFRESH_TOKEN:122.051c0599eb04fa5b60687e85ac0b387d.YsW9Rr6K0_cKFrQE72ViyfWlObEDWKHkwP2Sryn.uw_Jag}
+        # 重新授权获取的token (2025-10-27)
+        access-token: ${BAIDU_ACCOUNT1_ACCESS_TOKEN:121.e1f22b29bcb50fe9bb8390887c3d5d44.YC4-GDXN_4DIzbFxDhm5xB2PAP-jxEl4hQ1Ln3Q.TJVsoA}
+        refresh-token: ${BAIDU_ACCOUNT1_REFRESH_TOKEN:122.6522a9cbee96ca68e8c5be75bc806ea2.YgM7etSXhm2re7Dgz4-FVwo05PvLXIXUN-fBFue.FhRBWA}
       account2:
         client-id: ${BAIDU_ACCOUNT2_CLIENT_ID:9WdFRWt8Db2aGZVPcCVXBgIYmOQUXTEH}
         client-secret: ${BAIDU_ACCOUNT2_CLIENT_SECRET:tRiVxGdREeQbowK8VUKwA7KLrkZVmP3V}
