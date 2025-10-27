@@ -141,13 +141,13 @@ public class BaiduTongjiService {
      * 刷新指定账号的Access Token
      */
     public void refreshAccessToken(String accountName) {
-        try {
-            BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(accountName);
-            if (credentials == null) {
-                log.error("账号 {} 配置不存在", accountName);
-                return;
-            }
+        BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(accountName);
+        if (credentials == null) {
+            log.error("账号 {} 配置不存在", accountName);
+            return;
+        }
 
+        try {
             log.info("开始刷新账号 {} 的access_token...", accountName);
 
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
@@ -183,12 +183,18 @@ public class BaiduTongjiService {
                         credentials.setTokenExpires(System.currentTimeMillis() + (expiresIn * 1000));
                     }
 
+                    // 标记刷新成功，重置失败计数
+                    credentials.markRefreshSuccess();
                     log.info("账号 {} Token刷新成功", accountName);
                 } else {
+                    // 标记刷新失败
+                    credentials.markRefreshFailed();
                     log.error("账号 {} 刷新令牌失败: {}", accountName, response.getBody());
                 }
             }
         } catch (Exception e) {
+            // 标记刷新失败
+            credentials.markRefreshFailed();
             log.error("账号 {} 刷新访问令牌失败", accountName, e);
         }
     }
@@ -280,6 +286,15 @@ public class BaiduTongjiService {
 
                     if (errorCode == 111 || errorCode == 110) {
                         // 111: Access token expired, 110: Access token invalid
+                        // 检查是否应该跳过刷新（避免无效重试）
+                        if (credentials.shouldSkipRefresh()) {
+                            log.error("账号 {} Token刷新已连续失败{}次，距离上次失败不到1小时，跳过刷新。请手动重新授权获取新Token！",
+                                    accountName, credentials.getRefreshFailedCount());
+                            log.error("重新授权步骤：访问 https://openapi.baidu.com/oauth/2.0/authorize?response_type=code&client_id={}&redirect_uri=oob&scope=basic",
+                                    credentials.getClientId());
+                            return null;
+                        }
+
                         log.warn("账号 {} Token过期/无效 (error_code={}), 尝试刷新... (第{}次重试)", accountName, errorCode, retryCount + 1);
                         refreshAccessToken(accountName);
                         return getSiteUVInternal(accountName, siteId, startDate, endDate, retryCount + 1);
