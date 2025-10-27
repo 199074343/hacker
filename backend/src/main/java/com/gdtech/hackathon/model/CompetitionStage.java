@@ -8,7 +8,7 @@ public enum CompetitionStage {
     /**
      * 海选期
      */
-    SELECTION("selection", "海选期", "今日至11月7日 12:00",
+    SELECTION("selection", "海选期", "10月25日0:00至11月7日 12:00",
             "本阶段以累计UV排名,如果UV相同,则按队伍序号排名。本阶段结束,前15名晋级,在投资期可以接受投资人投资"),
 
     /**
