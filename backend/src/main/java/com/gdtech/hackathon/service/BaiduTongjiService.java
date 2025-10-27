@@ -228,6 +228,26 @@ public class BaiduTongjiService {
      * @return UV数据
      */
     public Integer getSiteUV(String accountName, String siteId, String startDate, String endDate) {
+        return getSiteUVInternal(accountName, siteId, startDate, endDate, 0);
+    }
+
+    /**
+     * 获取站点UV数据（内部方法，支持重试计数）
+     *
+     * @param accountName 百度统计账号标识
+     * @param siteId      站点ID
+     * @param startDate   开始日期
+     * @param endDate     结束日期
+     * @param retryCount  重试次数（防止无限递归）
+     * @return UV数据
+     */
+    private Integer getSiteUVInternal(String accountName, String siteId, String startDate, String endDate, int retryCount) {
+        // 防止无限递归：最多重试1次
+        if (retryCount > 1) {
+            log.error("账号 {} Token刷新重试次数超限，放弃获取UV数据", accountName);
+            return null;
+        }
+
         try {
             BaiduConfig.AccountCredentials credentials = baiduConfig.getAccountCredentials(accountName);
             if (credentials == null) {
@@ -246,7 +266,7 @@ public class BaiduTongjiService {
                     endDate
             );
 
-            log.debug("调用百度统计API: account={}, site_id={}, dates={}-{}", accountName, siteId, startDate, endDate);
+            log.debug("调用百度统计API: account={}, site_id={}, dates={}-{}, retry={}", accountName, siteId, startDate, endDate, retryCount);
 
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
@@ -260,9 +280,9 @@ public class BaiduTongjiService {
 
                     if (errorCode == 111 || errorCode == 110) {
                         // 111: Access token expired, 110: Access token invalid
-                        log.warn("账号 {} Token过期/无效 (error_code={}), 尝试刷新...", accountName, errorCode);
+                        log.warn("账号 {} Token过期/无效 (error_code={}), 尝试刷新... (第{}次重试)", accountName, errorCode, retryCount + 1);
                         refreshAccessToken(accountName);
-                        return getSiteUV(accountName, siteId, startDate, endDate);
+                        return getSiteUVInternal(accountName, siteId, startDate, endDate, retryCount + 1);
                     } else {
                         log.error("百度统计API返回错误: account={}, error_code={}, error_msg={}",
                                 accountName, errorCode, errorMsg);
