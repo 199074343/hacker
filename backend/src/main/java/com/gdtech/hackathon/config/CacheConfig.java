@@ -36,6 +36,9 @@ public class CacheConfig {
                 // 项目列表缓存 - 5分钟过期
                 buildCache("projects", 1, 5, TimeUnit.MINUTES),
 
+                // 完整项目列表缓存（带投资记录和排名）- 30秒过期
+                buildCache("allProjects", 1, 30, TimeUnit.SECONDS),
+
                 // 单个投资人缓存 - 5分钟过期,最多缓存100个投资人
                 buildCache("investor", 100, 5, TimeUnit.MINUTES),
 

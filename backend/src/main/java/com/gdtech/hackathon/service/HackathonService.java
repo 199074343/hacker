@@ -208,7 +208,9 @@ public class HackathonService {
     /**
      * 获取所有项目列表（带排名）
      * 优化：使用CompletableFuture并发调用多个飞书API，减少总响应时间
+     * 缓存30秒，投资或UV同步后自动清除
      */
+    @Cacheable(value = "allProjects", unless = "#result == null || #result.isEmpty()")
     public List<Project> getAllProjects() {
         try {
             long startTime = System.currentTimeMillis();
@@ -373,7 +375,8 @@ public class HackathonService {
     @Caching(evict = {
             @CacheEvict(value = "investor", key = "#investorUsername", beforeInvocation = false),
             @CacheEvict(value = "project", key = "#projectId", beforeInvocation = false),
-            @CacheEvict(value = "projects", allEntries = true, beforeInvocation = false)
+            @CacheEvict(value = "projects", allEntries = true, beforeInvocation = false),
+            @CacheEvict(value = "allProjects", allEntries = true, beforeInvocation = false)
     })
     public synchronized boolean invest(String investorUsername, String investorName,
                                        Long projectId, String projectName, Integer amount) {

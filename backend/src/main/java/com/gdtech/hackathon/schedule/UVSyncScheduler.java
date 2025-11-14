@@ -53,7 +53,8 @@ public class UVSyncScheduler {
     @Scheduled(fixedDelayString = "${baidu.tongji.sync-interval:10}000", initialDelay = 60000)
     @Caching(evict = {
             @CacheEvict(value = "projects", allEntries = true, beforeInvocation = false),
-            @CacheEvict(value = "project", allEntries = true, beforeInvocation = false)
+            @CacheEvict(value = "project", allEntries = true, beforeInvocation = false),
+            @CacheEvict(value = "allProjects", allEntries = true, beforeInvocation = false)
     })
     public void syncAllProjectUV() {
         try {
