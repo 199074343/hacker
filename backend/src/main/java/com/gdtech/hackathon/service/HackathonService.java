@@ -960,74 +960,7 @@ public class HackathonService {
             final Set<Long> finalQualifiedIds = new LinkedHashSet<>(qualifiedProjectIds);
             projects.forEach(p -> p.setQualified(finalQualifiedIds.contains(p.getId())));
 
-            // 步骤3：只在晋级区的15个队伍内按UV排序，计算UV排名分数
-            List<Project> qualifiedProjectsForRanking = projects.stream()
-                    .filter(Project::getQualified)
-                    .collect(Collectors.toList());
-
-            List<Project> uvSorted = new ArrayList<>(qualifiedProjectsForRanking);
-            uvSorted.sort((a, b) -> {
-                int cmp = Long.compare(b.getUv(), a.getUv());
-                if (cmp != 0) return cmp;
-                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
-                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
-                return teamNumA.compareTo(teamNumB);
-            });
-
-            Map<Long, Integer> uvRankMap = new HashMap<>();
-            Map<Long, Double> uvScores = new HashMap<>();
-            for (int i = 0; i < uvSorted.size(); i++) {
-                int rank = i + 1; // UV排名（1-15）
-                Project p = uvSorted.get(i);
-                // 新公式：UV分数 = (16 - UV排名) / 15，但UV为0时分数为0
-                double score;
-                if (p.getUv() != 0) {
-                    score = (double)(16 - rank) / 15;
-                } else {
-                    score = 0.0;
-                }
-                uvRankMap.put(p.getId(), rank);
-                uvScores.put(p.getId(), score);
-            }
-
-            // 步骤4：只在晋级区的15个队伍内按投资额排序，计算投资额排名分数
-            List<Project> investmentSorted = new ArrayList<>(qualifiedProjectsForRanking);
-            investmentSorted.sort((a, b) -> {
-                int cmp = Integer.compare(b.getInvestment(), a.getInvestment());
-                if (cmp != 0) return cmp;
-                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
-                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
-                return teamNumA.compareTo(teamNumB);
-            });
-
-            Map<Long, Integer> investmentRankMap = new HashMap<>();
-            Map<Long, Double> investmentScores = new HashMap<>();
-            for (int i = 0; i < investmentSorted.size(); i++) {
-                int rank = i + 1; // 投资额排名（1-15）
-                Project p = investmentSorted.get(i);
-                // 新公式：投资额分数 = (16 - 投资额排名) / 15，但投资额为0时分数为0
-                double score;
-                if (p.getInvestment() != 0) {
-                    score = (double)(16 - rank) / 15;
-                } else {
-                    score = 0.0;
-                }
-                investmentRankMap.put(p.getId(), rank);
-                investmentScores.put(p.getId(), score);
-            }
-
-            // 步骤5：只对晋级项目计算加权分数
-            qualifiedProjectsForRanking.forEach(p -> {
-                int uvRank = uvRankMap.get(p.getId());
-                int investRank = investmentRankMap.get(p.getId());
-                double uvScore = uvScores.get(p.getId());
-                double investScore = investmentScores.get(p.getId());
-                // 新加权公式：加权分数 = UV分数*20% + 投资额分数*80%
-                double weightedScore = uvScore * 0.2 + investScore * 0.8;
-                p.setWeightedScore(weightedScore);
-            });
-
-            // 步骤6：分组
+            // 步骤3：分组
             List<Project> qualifiedProjects = projects.stream()
                     .filter(Project::getQualified)
                     .collect(Collectors.toList());
@@ -1035,29 +968,32 @@ public class HackathonService {
                     .filter(p -> !p.getQualified())
                     .collect(Collectors.toList());
 
-            // 步骤7：晋级区按加权分数排序
+            // 步骤4：晋级区直接按投资金额排序（100%投资金额）
+            // 投资金额相同时按UV排序，UV相同再按队伍序号排序
             qualifiedProjects.sort((a, b) -> {
-                int cmp = Double.compare(b.getWeightedScore(), a.getWeightedScore());
+                // 首先按投资额排序（降序）
+                int cmp = Integer.compare(b.getInvestment(), a.getInvestment());
                 if (cmp != 0) return cmp;
-                // 分数相同时，按投资额排序
-                cmp = Integer.compare(b.getInvestment(), a.getInvestment());
+                // 投资额相同时，按UV排序（降序）
+                cmp = Long.compare(b.getUv(), a.getUv());
                 if (cmp != 0) return cmp;
-                // 投资额也相同时，按队伍编号排序
-                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
-                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
-                return teamNumA.compareTo(teamNumB);
+                // UV也相同时，按队伍编号排序（升序）
+                int teamNumA = parseTeamNumber(a.getTeamNumber());
+                int teamNumB = parseTeamNumber(b.getTeamNumber());
+                return Integer.compare(teamNumA, teamNumB);
             });
 
-            // 步骤8：非晋级区按UV排序
+            // 步骤5：非晋级区按UV排序
             nonQualifiedProjects.sort((a, b) -> {
                 int cmp = Long.compare(b.getUv(), a.getUv());
                 if (cmp != 0) return cmp;
-                String teamNumA = a.getTeamNumber() != null ? a.getTeamNumber() : "999";
-                String teamNumB = b.getTeamNumber() != null ? b.getTeamNumber() : "999";
-                return teamNumA.compareTo(teamNumB);
+                // UV相同时按队伍编号排序（升序）- 需要转为整数比较
+                int teamNumA = parseTeamNumber(a.getTeamNumber());
+                int teamNumB = parseTeamNumber(b.getTeamNumber());
+                return Integer.compare(teamNumA, teamNumB);
             });
 
-            // 步骤9：设置排名
+            // 步骤6：设置排名
             for (int i = 0; i < qualifiedProjects.size(); i++) {
                 qualifiedProjects.get(i).setRank(i + 1);
             }
@@ -1065,13 +1001,13 @@ public class HackathonService {
                 nonQualifiedProjects.get(i).setRank(i + 1);
             }
 
-            // 步骤10：合并列表
+            // 步骤7：合并列表
             projects.clear();
             projects.addAll(qualifiedProjects);
             projects.addAll(nonQualifiedProjects);
 
             String stageName = stage == CompetitionStage.ENDED ? "结束期" : "投资期";
-            log.debug("{}排名计算完成，使用加权算法：(16-UV排名)/15*0.2 + (16-投资额排名)/15*0.8（仅晋级区15队）", stageName);
+            log.debug("{}排名计算完成，晋级区按投资金额排序，投资金额相同按队伍序号排序", stageName);
         }
     }
 
@@ -1417,6 +1353,22 @@ public class HackathonService {
         } catch (NumberFormatException e) {
             log.warn("字段{}的值{}无法转换为Integer，返回默认值0", key, value);
             return 0;
+        }
+    }
+
+    /**
+     * 解析队伍编号为整数，用于排序
+     * 如果解析失败，返回999（排在最后）
+     */
+    private int parseTeamNumber(String teamNumber) {
+        if (teamNumber == null || teamNumber.trim().isEmpty()) {
+            return 999;
+        }
+        try {
+            return Integer.parseInt(teamNumber.trim());
+        } catch (NumberFormatException e) {
+            log.warn("队伍编号{}无法转换为整数，返回默认值999", teamNumber);
+            return 999;
         }
     }
 
